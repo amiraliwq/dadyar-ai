@@ -229,7 +229,7 @@ def bubble_score(gray,cx,cy,r):
 def scan_bubbles(aligned,n):
     gray=cv2.cvtColor(aligned,cv2.COLOR_BGR2GRAY)
     answers=[]; uncertain=[]
-    left,right=84,W-40; colw=(right-left)/4; top=H-220; gap=19
+    left,right=84,W-40; colw=(right-left)/4; top=H-220; gap=17.2
     sx=CANON_W/W; sy=CANON_H/H
     for q in range(1,n+1):
         col=(q-1)//30; row=(q-1)%30; x0=right-(col+1)*colw; y=top-row*gap
