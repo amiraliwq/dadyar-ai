@@ -73,6 +73,7 @@ create table if not exists public.submissions (
   blank_count integer not null default 0 check (blank_count >= 0),
   raw_score numeric(8,2),
   review_required boolean not null default false,
+  uncertain_answers jsonb not null default '[]'::jsonb,
   source_file_name text,
   source_file_path text,
   created_at timestamptz not null default now(),
