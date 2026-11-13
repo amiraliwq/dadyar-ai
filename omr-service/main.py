@@ -18,7 +18,7 @@ W,H=A4
 LIMIT=15*1024*1024
 CANON_W,CANON_H=2480,3508
 app=FastAPI(title="Dadyar AI OMR",version="0.3.0")
-app.add_middleware(CORSMiddleware,allow_origins=os.getenv("CORS_ORIGINS","*").split(","),allow_credentials=False,allow_methods=["GET","POST"],allow_headers=["*"])
+app.add_middleware(CORSMiddleware,allow_origins=[x.strip() for x in os.getenv("CORS_ORIGINS","http://localhost:3000").split(",") if x.strip()],allow_credentials=False,allow_methods=["GET","POST"],allow_headers=["*"])
 
 FONT_PATH=os.getenv("DADYAR_FONT","/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")
 try:
@@ -122,7 +122,7 @@ def draw_sheet(c,batch,s):
     left,right=84,W-40
     colw=(right-left)/4
     top=H-220
-    row_gap=19
+    row_gap=17.2
     for col in range(4):
         x0=right-(col+1)*colw
         c.setFont(FA_FONT,7); c.drawString(x0+5,top+17,fa("سؤال"))
@@ -188,13 +188,26 @@ def find_fiducials(img):
         if .72<=ratio<=1.28 and area/(bw*bh)>.68:
             candidates.append((area,(x+bw/2,y+bh/2)))
     if len(candidates)<4: return None
+    # Match the four printed registration squares by their expected normalized
+    # corner positions and approximate physical size. Do not simply choose the
+    # largest dark square: QR finder patterns also look like square contours.
     zones=[(0,0),(1,0),(1,1),(0,1)] # TL,TR,BR,BL
     points=[]
+    expected_size_x=14/W* w
+    expected_size_y=14/H* h
     for zx,zy in zones:
-        pool=[p for p in candidates if ((p[1][0]<w*.25) if zx==0 else (p[1][0]>w*.75))
-              and ((p[1][1]<h*.25) if zy==0 else (p[1][1]>h*.75))]
+        tx=(36/W*w) if zx==0 else (w-36/W*w)
+        ty=(36/H*h) if zy==0 else (h-36/H*h)
+        pool=[]
+        for area,center in candidates:
+            x,y=center
+            if not ((x<w*.18) if zx==0 else (x>w*.82)): continue
+            if not ((y<h*.18) if zy==0 else (y>h*.82)): continue
+            # Candidate should have roughly the physical dimensions of a 14pt marker.
+            contour_match=abs(x-tx)/max(1,w)+abs(y-ty)/max(1,h)
+            pool.append((contour_match,center))
         if not pool: return None
-        points.append(max(pool,key=lambda p:p[0])[1])
+        points.append(min(pool,key=lambda p:p[0])[1])
     src=np.array(points,dtype=np.float32)
     # registration-mark centers are 36pt from each A4 edge
     dx=36/W*CANON_W; dy=36/H*CANON_H
