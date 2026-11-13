@@ -36,7 +36,20 @@ footer{text-align:center;color:#73839e;padding:34px 16px;font-size:12px}
 <div class="result" id="result"></div><p class="hint">فرمول نمره خام: صحیح − (غلط ÷ ۳). این محاسبه در نسخه فعلی روی پاسخ‌های دستی انجام می‌شود.</p></div>
 </section>
 <section class="card" style="margin-top:16px"><h2>گزارش‌های اخیر</h2><div id="reports" class="list"><div class="empty">هنوز گزارشی ثبت نشده است.</div></div></section>
-</main>
+
+<section class="card" style="margin-top:16px">
+<h2>۳. تولید QR اختصاصی و تصحیح برگه اسکن‌شده</h2>
+<div class="field"><label>نشانی سرویس OMR (پس از استقرار سرویس پایتون)</label><input id="omrApi" placeholder="https://your-omr-service.example.com"></div>
+<div class="field"><label>فهرست دانش‌آموزان؛ هر خط: شناسه، نام، کد دانش‌آموزی</label><textarea id="studentsList" rows="5" style="width:100%;border:1px solid var(--line);background:#0b1425;color:var(--text);border-radius:10px;padding:12px;font:inherit" placeholder="stu-001,علی رضایی,1001&#10;stu-002,سارا احمدی,1002"></textarea></div>
+<div class="actions"><button id="makeSheets">تولید پاسخ‌برگ PDF با QR اختصاصی</button><button class="secondary" id="scanSheets">تصحیح تصویر / PDF اسکن‌شده</button></div>
+<div class="field"><label>انتخاب تصویر یا PDF پاسخ‌برگ (حداکثر ۱۵ مگابایت)</label><input id="scanFile" type="file" accept="image/png,image/jpeg,image/webp,application/pdf"></div>
+<div id="omrStatus" class="hint" style="margin-top:12px">برای استفاده از تولید PDF و موتور OMR، ابتدا سرویس Python را روی یک میزبان جداگانه مستقر و نشانی آن را وارد کن.</div>
+</section>
+<section class="card" style="margin-top:16px">
+<h2>۴. خروجی گزارش Excel</h2>
+<p class="hint">گزارش‌های ثبت‌شده در همین مرورگر را به فایل Excel تبدیل کن. پس از اتصال Supabase، خروجی از داده‌های مرکزی هم قابل تهیه خواهد بود.</p>
+<div class="actions"><button id="exportExcel">دانلود گزارش Excel</button></div>
+</section></main>
 <footer>دادیار AI · سامانه مدیریت آزمون و تصحیح پاسخ‌برگ<br>طراحی و توسعه: امیرعلی رضی خادمی</footer>
 <script>
 const $=id=>document.getElementById(id);let key=[],saved=JSON.parse(localStorage.getItem('dadyar_reports')||'[]'),exams=JSON.parse(localStorage.getItem('dadyar_exams')||'[]');
@@ -50,4 +63,13 @@ $('saveExam').onclick=()=>{readKey();if(!key.length||key.some(x=>!x)){alert('ل�
 $('gradeBtn').onclick=()=>{readKey();if(!key.length||key.some(x=>!x)){alert('ابتدا کلید کامل پاسخ را تعیین کن.');return;}let correct=0,wrong=0,blank=0;key.forEach((a,i)=>{let v=$('s'+i)?.value||'';if(!v)blank++;else if(v===a)correct++;else wrong++;});let score=correct-wrong/3;let name=$('studentName').value.trim()||'دانش‌آموز بدون نام';let exam=$('examTitle').value.trim()||'آزمون جاری';let row={name,code:$('studentCode').value,exam,correct,wrong,blank,score,total:key.length,date:new Date().toISOString()};saved.push(row);localStorage.setItem('dadyar_reports',JSON.stringify(saved));$('result').style.display='block';$('result').innerHTML='<strong>'+fa(score.toFixed(2))+' از '+fa(key.length)+'</strong><br>صحیح: '+fa(correct)+' · غلط: '+fa(wrong)+' · سفید: '+fa(blank)+'<br>نمره خام با ضریب منفی ۳';update();};
 $('clearBtn').onclick=()=>{document.querySelectorAll('#studentFields select').forEach(x=>x.value='');$('result').style.display='none';};
 build();update();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+const apiBase=()=>document.getElementById('omrApi').value.trim().replace(/\\/$/,'');
+const statusBox=document.getElementById('omrStatus');
+function getStudents(){return document.getElementById('studentsList').value.split(/\\r?\\n/).map((line,i)=>line.trim()).filter(Boolean).map((line,i)=>{const p=line.split(',').map(x=>x.trim());if(p.length<3)throw new Error('خط '+(i+1)+' باید سه بخش شناسه، نام و کد داشته باشد.');return {student_id:p[0],name:p[1],code:p[2]};});}
+document.getElementById('makeSheets').onclick=async()=>{try{const api=apiBase();if(!api)throw new Error('نشانی سرویس OMR را وارد کن.');const students=getStudents();if(!students.length)throw new Error('فهرست دانش‌آموزان خالی است.');readKey();if(!key.length||key.some(x=>!x))throw new Error('ابتدا کلید پاسخ کامل را ثبت کن.');statusBox.textContent='در حال ساخت پاسخ‌برگ‌ها…';const res=await fetch(api+'/v1/sheets/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({exam_id:'exam-'+Date.now(),exam_title:document.getElementById('examTitle').value||'آزمون',question_count:key.length,students})});if(!res.ok)throw new Error(await res.text());const blob=await res.blob(),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='dadyar-answer-sheets.pdf';a.click();URL.revokeObjectURL(url);statusBox.textContent='پاسخ‌برگ‌ها ساخته شد. تعداد: '+students.length;}catch(e){statusBox.textContent='خطا: '+e.message;}};
+document.getElementById('scanSheets').onclick=async()=>{try{const api=apiBase(),file=document.getElementById('scanFile').files[0];if(!api)throw new Error('نشانی سرویس OMR را وارد کن.');if(!file)throw new Error('فایل اسکن را انتخاب کن.');if(file.size>15*1024*1024)throw new Error('حداکثر حجم فایل ۱۵ مگابایت است.');readKey();if(!key.length||key.some(x=>!x))throw new Error('کلید پاسخ کامل نیست.');const fd=new FormData();fd.append('file',file);fd.append('answer_key',JSON.stringify(key.map(Number)));fd.append('negative_coefficient','3');statusBox.textContent='در حال تحلیل تصویر/PDF…';const res=await fetch(api+'/v1/sheets/inspect',{method:'POST',body:fd});if(!res.ok)throw new Error(await res.text());const data=await res.json();statusBox.textContent=JSON.stringify(data,null,2);statusBox.style.whiteSpace='pre-wrap';}catch(e){statusBox.textContent='خطا: '+e.message;}};
+document.getElementById('exportExcel').onclick=()=>{if(!window.XLSX){alert('کتابخانه Excel بارگذاری نشد؛ اتصال اینترنت را بررسی کن.');return;}const data=JSON.parse(localStorage.getItem('dadyar_reports')||'[]');if(!data.length){alert('هنوز گزارشی برای خروجی وجود ندارد.');return;}const rows=data.map(x=>({'نام دانش‌آموز':x.name,'کد دانش‌آموزی':x.code,'آزمون':x.exam,'صحیح':x.correct,'غلط':x.wrong,'سفید':x.blank,'نمره خام':x.score,'تعداد سؤال':x.total}));const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'گزارش آزمون');XLSX.writeFile(wb,'dadyar-report.xlsx');};
 </script></body></html>
