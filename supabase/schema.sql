@@ -1,13 +1,6 @@
--- Dadyar AI production foundation
--- Apply only to a dedicated Dadyar Supabase project after review.
+-- Dadyar AI production schema
+-- Run only in a dedicated Dadyar Supabase project.
 create extension if not exists pgcrypto;
-
-create table if not exists public.user_profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
-  display_name text not null default '',
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
 
 create table if not exists public.institutions (
   id uuid primary key default gen_random_uuid(),
@@ -15,7 +8,7 @@ create table if not exists public.institutions (
   name text not null,
   website text,
   site_name text not null default 'دادیار AI',
-  logo_path text,
+  logo_url text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -39,6 +32,16 @@ as $$
     where m.institution_id = target_institution and m.user_id = auth.uid()
   );
 $$;
+
+create table if not exists public.profiles (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null unique references auth.users(id) on delete cascade,
+  institution_id uuid not null references public.institutions(id) on delete cascade,
+  role text not null default 'owner' check (role in ('owner','admin','teacher','viewer')),
+  full_name text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
 
 create table if not exists public.classes (
   id uuid primary key default gen_random_uuid(),
@@ -92,6 +95,7 @@ create table if not exists public.submissions (
   unresolved_count integer not null default 0 check (unresolved_count >= 0),
   raw_score numeric(8,2),
   review_required boolean not null default true,
+  source_file_name text,
   source_file_path text,
   reviewed_by uuid references auth.users(id) on delete set null,
   reviewed_at timestamptz,
@@ -99,6 +103,7 @@ create table if not exists public.submissions (
   unique(exam_id,student_id)
 );
 
+create index if not exists profiles_user_idx on public.profiles(user_id);
 create index if not exists classes_institution_idx on public.classes(institution_id);
 create index if not exists students_institution_idx on public.students(institution_id);
 create index if not exists students_class_idx on public.students(class_id);
@@ -106,18 +111,14 @@ create index if not exists exams_institution_date_idx on public.exams(institutio
 create index if not exists submissions_exam_idx on public.submissions(exam_id);
 create index if not exists submissions_student_idx on public.submissions(student_id);
 
-alter table public.user_profiles enable row level security;
 alter table public.institutions enable row level security;
 alter table public.institution_members enable row level security;
+alter table public.profiles enable row level security;
 alter table public.classes enable row level security;
 alter table public.students enable row level security;
 alter table public.exams enable row level security;
 alter table public.answer_keys enable row level security;
 alter table public.submissions enable row level security;
-
-drop policy if exists "profile self access" on public.user_profiles;
-create policy "profile self access" on public.user_profiles
-for all to authenticated using (id = auth.uid()) with check (id = auth.uid());
 
 drop policy if exists "institution member read" on public.institutions;
 create policy "institution member read" on public.institutions
@@ -136,8 +137,7 @@ drop policy if exists "members view" on public.institution_members;
 create policy "members view" on public.institution_members
 for select to authenticated using (
   user_id = auth.uid() or exists (
-    select 1 from public.institutions i
-    where i.id = institution_id and i.owner_id = auth.uid()
+    select 1 from public.institutions i where i.id = institution_id and i.owner_id = auth.uid()
   )
 );
 drop policy if exists "owners manage members" on public.institution_members;
@@ -147,6 +147,11 @@ for all to authenticated using (
 ) with check (
   exists (select 1 from public.institutions i where i.id = institution_id and i.owner_id = auth.uid())
 );
+
+drop policy if exists "profile self access" on public.profiles;
+create policy "profile self access" on public.profiles
+for all to authenticated using (user_id = auth.uid())
+with check (user_id = auth.uid() and public.is_institution_member(institution_id));
 
 drop policy if exists "class member access" on public.classes;
 create policy "class member access" on public.classes
@@ -186,36 +191,36 @@ drop policy if exists "institution members read dadyar files" on storage.objects
 create policy "institution members read dadyar files" on storage.objects
 for select to authenticated using (
   bucket_id='dadyar-private' and exists (
-    select 1 from public.institutions i
-    where i.id::text = split_part(name,'/',1) and public.is_institution_member(i.id)
+    select 1 from public.institutions i where i.id::text=split_part(name,'/',1)
+      and public.is_institution_member(i.id)
   )
 );
 drop policy if exists "institution members upload dadyar files" on storage.objects;
 create policy "institution members upload dadyar files" on storage.objects
 for insert to authenticated with check (
   bucket_id='dadyar-private' and exists (
-    select 1 from public.institutions i
-    where i.id::text = split_part(name,'/',1) and public.is_institution_member(i.id)
+    select 1 from public.institutions i where i.id::text=split_part(name,'/',1)
+      and public.is_institution_member(i.id)
   )
 );
 drop policy if exists "institution members update dadyar files" on storage.objects;
 create policy "institution members update dadyar files" on storage.objects
 for update to authenticated using (
   bucket_id='dadyar-private' and exists (
-    select 1 from public.institutions i
-    where i.id::text = split_part(name,'/',1) and public.is_institution_member(i.id)
+    select 1 from public.institutions i where i.id::text=split_part(name,'/',1)
+      and public.is_institution_member(i.id)
   )
 ) with check (
   bucket_id='dadyar-private' and exists (
-    select 1 from public.institutions i
-    where i.id::text = split_part(name,'/',1) and public.is_institution_member(i.id)
+    select 1 from public.institutions i where i.id::text=split_part(name,'/',1)
+      and public.is_institution_member(i.id)
   )
 );
 drop policy if exists "institution members delete dadyar files" on storage.objects;
 create policy "institution members delete dadyar files" on storage.objects
 for delete to authenticated using (
   bucket_id='dadyar-private' and exists (
-    select 1 from public.institutions i
-    where i.id::text = split_part(name,'/',1) and public.is_institution_member(i.id)
+    select 1 from public.institutions i where i.id::text=split_part(name,'/',1)
+      and public.is_institution_member(i.id)
   )
 );
