@@ -33,6 +33,19 @@ as $$
   );
 $$;
 
+create or replace function public.can_edit_institution(target_institution uuid)
+returns boolean language sql stable security definer set search_path = public
+as $
+  select exists (
+    select 1 from public.institutions i
+    where i.id = target_institution and i.owner_id = auth.uid()
+  ) or exists (
+    select 1 from public.institution_members m
+    where m.institution_id = target_institution and m.user_id = auth.uid()
+      and m.role in ('admin','teacher')
+  );
+$;
+
 create table if not exists public.profiles (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null unique references auth.users(id) on delete cascade,
@@ -49,18 +62,20 @@ create table if not exists public.classes (
   title text not null,
   grade text,
   created_at timestamptz not null default now(),
-  unique(institution_id,title)
+  unique(institution_id,title),
+  unique(id,institution_id)
 );
 
 create table if not exists public.students (
   id uuid primary key default gen_random_uuid(),
   institution_id uuid not null references public.institutions(id) on delete cascade,
-  class_id uuid not null references public.classes(id) on delete cascade,
+  class_id uuid not null,
   student_code text not null,
   first_name text not null,
   last_name text not null,
   created_at timestamptz not null default now(),
-  unique(class_id,student_code)
+  unique(class_id,student_code),
+  foreign key (class_id,institution_id) references public.classes(id,institution_id) on delete cascade
 );
 
 create table if not exists public.exams (
@@ -149,37 +164,67 @@ for all to authenticated using (
 );
 
 drop policy if exists "profile self access" on public.profiles;
-create policy "profile self access" on public.profiles
-for all to authenticated using (user_id = auth.uid())
-with check (user_id = auth.uid() and public.is_institution_member(institution_id));
-
-drop policy if exists "class member access" on public.classes;
-create policy "class member access" on public.classes
-for all to authenticated using (public.is_institution_member(institution_id))
-with check (public.is_institution_member(institution_id));
-
-drop policy if exists "student member access" on public.students;
-create policy "student member access" on public.students
-for all to authenticated using (public.is_institution_member(institution_id))
-with check (public.is_institution_member(institution_id));
-
-drop policy if exists "exam member access" on public.exams;
-create policy "exam member access" on public.exams
-for all to authenticated using (public.is_institution_member(institution_id))
-with check (public.is_institution_member(institution_id));
-
-drop policy if exists "answer key member access" on public.answer_keys;
-create policy "answer key member access" on public.answer_keys
-for all to authenticated using (
-  exists (select 1 from public.exams e where e.id = exam_id and public.is_institution_member(e.institution_id))
-) with check (
-  exists (select 1 from public.exams e where e.id = exam_id and public.is_institution_member(e.institution_id))
+drop policy if exists "profile self read" on public.profiles;
+create policy "profile self read" on public.profiles
+for select to authenticated using (user_id = auth.uid());
+drop policy if exists "profile owner onboarding" on public.profiles;
+create policy "profile owner onboarding" on public.profiles
+for insert to authenticated with check (
+  user_id = auth.uid() and role = 'owner' and exists (
+    select 1 from public.institutions i where i.id = institution_id and i.owner_id = auth.uid()
+  )
 );
 
+drop policy if exists "class member access" on public.classes;
+create policy "class member read" on public.classes for select to authenticated
+using (public.is_institution_member(institution_id));
+create policy "class member write" on public.classes for insert to authenticated
+with check (public.can_edit_institution(institution_id));
+create policy "class member update" on public.classes for update to authenticated
+using (public.can_edit_institution(institution_id)) with check (public.can_edit_institution(institution_id));
+create policy "class member delete" on public.classes for delete to authenticated
+using (public.can_edit_institution(institution_id));
+
+drop policy if exists "student member access" on public.students;
+create policy "student member read" on public.students for select to authenticated
+using (public.is_institution_member(institution_id));
+create policy "student member write" on public.students for insert to authenticated
+with check (public.can_edit_institution(institution_id));
+create policy "student member update" on public.students for update to authenticated
+using (public.can_edit_institution(institution_id)) with check (public.can_edit_institution(institution_id));
+create policy "student member delete" on public.students for delete to authenticated
+using (public.can_edit_institution(institution_id));
+
+drop policy if exists "exam member access" on public.exams;
+create policy "exam member read" on public.exams for select to authenticated
+using (public.is_institution_member(institution_id));
+create policy "exam member write" on public.exams for insert to authenticated
+with check (public.can_edit_institution(institution_id));
+create policy "exam member update" on public.exams for update to authenticated
+using (public.can_edit_institution(institution_id)) with check (public.can_edit_institution(institution_id));
+create policy "exam member delete" on public.exams for delete to authenticated
+using (public.can_edit_institution(institution_id));
+
+drop policy if exists "answer key member access" on public.answer_keys;
+create policy "answer key member read" on public.answer_keys for select to authenticated
+using (exists (select 1 from public.exams e where e.id = exam_id and public.is_institution_member(e.institution_id)));
+create policy "answer key member write" on public.answer_keys for insert to authenticated
+with check (exists (select 1 from public.exams e where e.id = exam_id and public.can_edit_institution(e.institution_id)));
+create policy "answer key member update" on public.answer_keys for update to authenticated
+using (exists (select 1 from public.exams e where e.id = exam_id and public.can_edit_institution(e.institution_id)))
+with check (exists (select 1 from public.exams e where e.id = exam_id and public.can_edit_institution(e.institution_id)));
+create policy "answer key member delete" on public.answer_keys for delete to authenticated
+using (exists (select 1 from public.exams e where e.id = exam_id and public.can_edit_institution(e.institution_id)));
+
 drop policy if exists "submission member access" on public.submissions;
-create policy "submission member access" on public.submissions
-for all to authenticated using (public.is_institution_member(institution_id))
-with check (public.is_institution_member(institution_id));
+create policy "submission member read" on public.submissions for select to authenticated
+using (public.is_institution_member(institution_id));
+create policy "submission member write" on public.submissions for insert to authenticated
+with check (public.can_edit_institution(institution_id));
+create policy "submission member update" on public.submissions for update to authenticated
+using (public.can_edit_institution(institution_id)) with check (public.can_edit_institution(institution_id));
+create policy "submission member delete" on public.submissions for delete to authenticated
+using (public.can_edit_institution(institution_id));
 
 insert into storage.buckets (id,name,public,file_size_limit,allowed_mime_types)
 values ('dadyar-private','dadyar-private',false,15728640,
