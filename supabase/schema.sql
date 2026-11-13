@@ -108,6 +108,7 @@ create table if not exists public.submissions (
   wrong_count integer not null default 0 check (wrong_count >= 0),
   blank_count integer not null default 0 check (blank_count >= 0),
   unresolved_count integer not null default 0 check (unresolved_count >= 0),
+  uncertain_answers jsonb not null default '[]'::jsonb,
   raw_score numeric(8,2),
   review_required boolean not null default true,
   source_file_name text,
@@ -245,7 +246,7 @@ create policy "institution members upload dadyar files" on storage.objects
 for insert to authenticated with check (
   bucket_id='dadyar-private' and exists (
     select 1 from public.institutions i where i.id::text=split_part(name,'/',1)
-      and public.is_institution_member(i.id)
+      and public.can_edit_institution(i.id)
   )
 );
 drop policy if exists "institution members update dadyar files" on storage.objects;
@@ -253,12 +254,12 @@ create policy "institution members update dadyar files" on storage.objects
 for update to authenticated using (
   bucket_id='dadyar-private' and exists (
     select 1 from public.institutions i where i.id::text=split_part(name,'/',1)
-      and public.is_institution_member(i.id)
+      and public.can_edit_institution(i.id)
   )
 ) with check (
   bucket_id='dadyar-private' and exists (
     select 1 from public.institutions i where i.id::text=split_part(name,'/',1)
-      and public.is_institution_member(i.id)
+      and public.can_edit_institution(i.id)
   )
 );
 drop policy if exists "institution members delete dadyar files" on storage.objects;
@@ -266,6 +267,6 @@ create policy "institution members delete dadyar files" on storage.objects
 for delete to authenticated using (
   bucket_id='dadyar-private' and exists (
     select 1 from public.institutions i where i.id::text=split_part(name,'/',1)
-      and public.is_institution_member(i.id)
+      and public.can_edit_institution(i.id)
   )
 );
