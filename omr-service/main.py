@@ -218,6 +218,31 @@ def find_fiducials(img):
     M=cv2.getPerspectiveTransform(src,dst)
     return cv2.warpPerspective(img,M,(CANON_W,CANON_H),flags=cv2.INTER_CUBIC)
 
+def orient_and_align(img,detector):
+    # Normalize portrait orientation and resolve 180-degree scans by locating
+    # the signed QR in its expected upper-left area after perspective correction.
+    rotations=[
+        img,
+        cv2.rotate(img,cv2.ROTATE_90_CLOCKWISE),
+        cv2.rotate(img,cv2.ROTATE_180),
+        cv2.rotate(img,cv2.ROTATE_90_COUNTERCLOCKWISE),
+    ]
+    for candidate in rotations:
+        h,w=candidate.shape[:2]
+        if w>=h:
+            continue
+        aligned=find_fiducials(candidate)
+        if aligned is None:
+            continue
+        raw,points,_=detector.detectAndDecode(aligned)
+        if not raw or points is None:
+            continue
+        pts=np.asarray(points,dtype=np.float32).reshape(-1,2)
+        cx,cy=pts.mean(axis=0)
+        if cx < CANON_W*.30 and cy < CANON_H*.25:
+            return aligned,raw
+    return None,None
+
 def bubble_score(gray,cx,cy,r):
     # Estimate darkness inside the bubble while excluding its printed outline.
     inner=np.zeros(gray.shape,np.uint8); ring=np.zeros(gray.shape,np.uint8)
@@ -267,10 +292,9 @@ async def inspect(file:UploadFile=File(...),answer_key:str=Form(...),negative_co
         raise HTTPException(503,"کلید امن QR روی سرویس تنظیم نشده است.")
     results=[]; detector=cv2.QRCodeDetector()
     for i,img in enumerate(decode_pdf_or_image(data,file.content_type),1):
-        aligned=find_fiducials(img)
+        aligned,qr=orient_and_align(img,detector)
         if aligned is None:
-            results.append({"page":i,"status":"review_required","reason":"چهار علامت مرجع پیدا نشد؛ احتمال برش یا کیفیت پایین تصویر."}); continue
-        qr,_,_=detector.detectAndDecode(aligned)
+            results.append({"page":i,"status":"review_required","reason":"علامت‌های مرجع یا QR در جهت معتبر پیدا نشد؛ احتمال چرخش، برش یا کیفیت پایین تصویر."}); continue
         student=verify_qr(qr) if qr else None
         if not student:
             results.append({"page":i,"status":"review_required","reason":"QR اختصاصی معتبر پیدا نشد."}); continue
