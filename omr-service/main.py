@@ -213,10 +213,7 @@ def bubble_score(gray,cx,cy,r):
     baseline=float(np.median(outside))
     return float(np.mean(np.clip((baseline-inside)/max(35,baseline),0,1)))
 
-def scan_bubbles(img,n):
-    aligned=find_fiducials(img)
-    if aligned is None:
-        return None,None,"چهار علامت مرجع گوشه‌ها پیدا نشد؛ برگه را کامل، صاف و بدون برش اسکن کنید."
+def scan_bubbles(aligned,n):
     gray=cv2.cvtColor(aligned,cv2.COLOR_BGR2GRAY)
     answers=[]; uncertain=[]
     left,right=84,W-40; colw=(right-left)/4; top=H-220; gap=19
@@ -266,12 +263,15 @@ async def inspect(file:UploadFile=File(...),answer_key:str=Form(...),negative_co
         answers,uncertain,error=scan_bubbles(aligned,len(key))
         if error:
             results.append({"page":i,"status":"review_required","reason":error,"student":student}); continue
+        uncertain_q={u["question"] for u in uncertain}
         correct=sum(a==k for a,k in zip(answers,key) if a is not None)
-        blank=sum(a is None for a in answers); wrong=len(key)-correct-blank
+        blank=sum(a is None and q not in uncertain_q for q,a in enumerate(answers,1))
+        unresolved=len(uncertain_q)
+        wrong=len(key)-correct-blank-unresolved
         score=correct-(wrong/negative_coefficient if negative_coefficient>0 else 0)
         results.append({"page":i,"status":"review_required" if uncertain else "processed",
             "student":student,"answers":answers,"correct":correct,"wrong":wrong,"blank":blank,
-            "score":round(score,2),"uncertain":uncertain})
+            "unresolved":unresolved,"score":round(score,2),"uncertain":uncertain})
     return {"pages":results,"scoring":"correct - wrong / negative_coefficient; blank=0",
             "warning":"این نسخه باید با چند نمونه چاپ و اسکن واقعی کالیبره شود. وضعیت review_required را بدون بازبینی انسانی نهایی نکنید."}
 
