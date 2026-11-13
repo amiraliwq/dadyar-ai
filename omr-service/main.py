@@ -168,7 +168,7 @@ def decode_pdf_or_image(data,ctype):
         if len(doc)>50: raise HTTPException(400,"حداکثر ۵۰ صفحه مجاز است.")
         imgs=[]
         for page in doc:
-            pix=page.get_pixmap(matrix=fitz.Matrix(3,3),alpha=False)
+            pix=page.get_pixmap(matrix=fitz.Matrix(4.1667,4.1667),alpha=False)
             imgs.append(cv2.imdecode(np.frombuffer(pix.tobytes("png"),np.uint8),cv2.IMREAD_COLOR))
         return imgs
     img=cv2.imdecode(np.frombuffer(data,np.uint8),cv2.IMREAD_COLOR)
@@ -186,7 +186,7 @@ def find_fiducials(img):
         x,y,bw,bh=cv2.boundingRect(cnt)
         ratio=bw/max(1,bh)
         if .72<=ratio<=1.28 and area/(bw*bh)>.68:
-            candidates.append((area,(x+bw/2,y+bh/2)))
+            candidates.append((area,(x+bw/2,y+bh/2),bw,bh))
     if len(candidates)<4: return None
     # Match the four printed registration squares by their expected normalized
     # corner positions and approximate physical size. Do not simply choose the
@@ -199,12 +199,15 @@ def find_fiducials(img):
         tx=(36/W*w) if zx==0 else (w-36/W*w)
         ty=(36/H*h) if zy==0 else (h-36/H*h)
         pool=[]
-        for area,center in candidates:
+        for area,center,bw,bh in candidates:
             x,y=center
             if not ((x<w*.18) if zx==0 else (x>w*.82)): continue
             if not ((y<h*.18) if zy==0 else (y>h*.82)): continue
-            # Candidate should have roughly the physical dimensions of a 14pt marker.
+            # Match the printed square's expected physical size and corner offset.
+            if abs(bw-expected_size_x)/max(1,expected_size_x)>.60: continue
+            if abs(bh-expected_size_y)/max(1,expected_size_y)>.60: continue
             contour_match=abs(x-tx)/max(1,w)+abs(y-ty)/max(1,h)
+            if contour_match>.12: continue
             pool.append((contour_match,center))
         if not pool: return None
         points.append(min(pool,key=lambda p:p[0])[1])
