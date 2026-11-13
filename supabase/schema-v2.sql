@@ -205,6 +205,9 @@ using (
   )
 );
 
+revoke all on public.institutions, public.profiles, public.classes, public.students,
+  public.exams, public.answer_keys, public.submissions from anon;
+grant usage on schema public to authenticated;
 grant select, insert, update, delete on public.institutions, public.profiles,
   public.classes, public.students, public.exams, public.answer_keys, public.submissions
 to authenticated;
