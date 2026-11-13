@@ -74,6 +74,7 @@ create table if not exists public.submissions (
   raw_score numeric(8,2),
   review_required boolean not null default false,
   uncertain_answers jsonb not null default '[]'::jsonb,
+  unresolved_count integer not null default 0 check (unresolved_count >= 0),
   source_file_name text,
   source_file_path text,
   created_at timestamptz not null default now(),
@@ -81,6 +82,7 @@ create table if not exists public.submissions (
 );
 
 alter table public.submissions add column if not exists uncertain_answers jsonb not null default '[]'::jsonb;
+alter table public.submissions add column if not exists unresolved_count integer not null default 0 check (unresolved_count >= 0);
 
 create index if not exists classes_institution_idx on public.classes(institution_id);
 create index if not exists students_institution_idx on public.students(institution_id);
