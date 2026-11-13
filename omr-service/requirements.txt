@@ -1,5 +1,10 @@
-fastapi>=0.115,<1
-uvicorn[standard]>=0.30,<1
-python-multipart>=0.0.9
-opencv-python-headless>=4.10,<5
-numpy>=1.26,<3
+fastapi==0.115.12
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+opencv-python-headless==4.11.0.86
+numpy==2.2.4
+PyMuPDF==1.25.5
+qrcode[pil]==8.0
+reportlab==4.3.1
+openpyxl==3.1.5
+pydantic==2.10.6
