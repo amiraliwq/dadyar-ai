@@ -113,7 +113,13 @@ drop policy if exists "profile_update_self" on public.profiles;
 create policy "profile_update_self" on public.profiles
 for update to authenticated
 using (user_id = (select auth.uid()))
-with check (user_id = (select auth.uid()));
+with check (
+  user_id = (select auth.uid())
+  and exists (
+    select 1 from public.institutions i
+    where i.id = institution_id and i.owner_id = (select auth.uid())
+  )
+);
 
 drop policy if exists "institution_owner_all" on public.institutions;
 create policy "institution_owner_all" on public.institutions
