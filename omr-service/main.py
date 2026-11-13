@@ -1,7 +1,9 @@
 import io, os, json, hmac, hashlib, uuid
 from typing import List
 import cv2, fitz, numpy as np, qrcode
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import httpx
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -14,6 +16,9 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 
 SECRET=os.getenv("DADYAR_QR_SECRET","CHANGE-ME-BEFORE-PRODUCTION")
+SUPABASE_URL=os.getenv("SUPABASE_URL","").rstrip("/")
+SUPABASE_ANON_KEY=os.getenv("SUPABASE_ANON_KEY",os.getenv("SUPABASE_PUBLISHABLE_KEY",""))
+bearer=HTTPBearer(auto_error=False)
 W,H=A4
 LIMIT=15*1024*1024
 CANON_W,CANON_H=2480,3508
@@ -41,11 +46,11 @@ def txt(c,x,y,s,size=8,bold=False):
     c.drawRightString(x,y,fa(s))
 
 class Student(BaseModel):
-    student_id:str
+    student_id:uuid.UUID
     name:str
     code:str
 class Batch(BaseModel):
-    exam_id:str
+    exam_id:uuid.UUID
     exam_title:str="آزمون"
     subject:str="ریاضی"
     school_name:str="ایران زمین"
@@ -78,7 +83,59 @@ def verify_qr(raw):
 
 @app.get("/health")
 def health():
-    return {"status":"ok","service":"dadyar-omr","version":"0.3.0"}
+    return {"status":"ok","service":"dadyar-omr","version":"0.4.0",
+            "database_configured":bool(SUPABASE_URL and SUPABASE_ANON_KEY),
+            "qr_configured":SECRET!="CHANGE-ME-BEFORE-PRODUCTION"}
+
+async def verify_user(credentials:HTTPAuthorizationCredentials=Depends(bearer)):
+    if not credentials or credentials.scheme.lower()!="bearer":
+        raise HTTPException(401,"برای استفاده از سرویس وارد حساب کاربری شوید.")
+    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+        raise HTTPException(503,"اتصال امن Supabase روی سرویس OMR تنظیم نشده است.")
+    try:
+        async with httpx.AsyncClient(timeout=12) as client:
+            response=await client.get(SUPABASE_URL+"/auth/v1/user",
+                headers={"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+credentials.credentials})
+        if response.status_code!=200:
+            raise HTTPException(401,"نشست کاربری معتبر نیست؛ دوباره وارد شوید.")
+        return response.json()
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(503,"امکان بررسی نشست کاربری وجود ندارد.")
+
+async def supabase_rows(table,token,params):
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            response=await client.get(SUPABASE_URL+"/rest/v1/"+table,params=params,
+                headers={"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+token})
+        if response.status_code in (401,403):
+            raise HTTPException(403,"دسترسی به داده‌های این مدرسه مجاز نیست.")
+        if response.status_code>=400:
+            raise HTTPException(502,"خطا در خواندن اطلاعات پایگاه داده.")
+        return response.json()
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(503,"اتصال به پایگاه داده برقرار نشد.")
+
+async def exam_context(exam_id,token):
+    rows=await supabase_rows("exams",token,{"select":"id,institution_id,question_count,negative_coefficient","id":"eq."+str(exam_id)})
+    return rows[0] if rows else None
+
+async def student_context(student_id,institution_id,token):
+    rows=await supabase_rows("students",token,{"select":"id,institution_id,student_code,first_name,last_name","id":"eq."+str(student_id),"institution_id":"eq."+str(institution_id)})
+    return rows[0] if rows else None
+
+async def exam_answer_key(exam_id,token):
+    rows=await supabase_rows("answer_keys",token,{"select":"answers","exam_id":"eq."+str(exam_id)})
+    if not rows:return None
+    try:
+        values=[int(x) for x in rows[0]["answers"]]
+        if not 1<=len(values)<=120 or any(x not in (1,2,3,4) for x in values):return None
+        return values
+    except Exception:
+        return None
 
 def draw_sheet(c,batch,s):
     # Four large registration squares + repeated side ticks make deskew/crop detection reliable.
@@ -149,11 +206,29 @@ def draw_sheet(c,batch,s):
     return qrdata
 
 @app.post("/v1/sheets/generate")
-def generate(batch:Batch):
+async def generate(batch:Batch,user=Depends(verify_user),credentials:HTTPAuthorizationCredentials=Depends(bearer)):
+    token=credentials.credentials
     if not batch.students or len(batch.students)>500:
         raise HTTPException(400,"تعداد دانش‌آموز باید بین ۱ تا ۵۰۰ باشد.")
     if SECRET=="CHANGE-ME-BEFORE-PRODUCTION":
         raise HTTPException(503,"ابتدا DADYAR_QR_SECRET امن را در تنظیمات سرویس تعریف کنید.")
+    exam=await exam_context(batch.exam_id,token)
+    if not exam:
+        raise HTTPException(404,"آزمون پیدا نشد یا به آن دسترسی ندارید.")
+    if int(exam["question_count"])!=batch.question_count:
+        raise HTTPException(400,"تعداد سؤال با آزمون ثبت‌شده در پایگاه داده یکسان نیست.")
+    ids=[str(s.student_id) for s in batch.students]
+    if len(set(ids))!=len(ids):
+        raise HTTPException(400,"شناسه دانش‌آموز تکراری است.")
+    rows=await supabase_rows("students",token,{"select":"id,institution_id,student_code,first_name,last_name",
+        "id":"in.("+",".join(ids)+")","institution_id":"eq."+exam["institution_id"]})
+    by_id={r["id"]:r for r in rows}
+    if len(by_id)!=len(ids):
+        raise HTTPException(403,"یک یا چند دانش‌آموز متعلق به مدرسه شما نیستند یا پیدا نشدند.")
+    batch.students=[Student(student_id=uuid.UUID(r["id"]),
+        name=(r.get("first_name","")+" "+r.get("last_name","")).strip(),code=r["student_code"])
+        for r in (by_id[str(s.student_id)] for s in batch.students)]
+    batch.exam_id=uuid.UUID(exam["id"])
     bio=io.BytesIO(); c=canvas.Canvas(bio,pagesize=A4)
     for s in batch.students:
         draw_sheet(c,batch,s); c.showPage()
@@ -161,6 +236,7 @@ def generate(batch:Batch):
     return StreamingResponse(bio,media_type="application/pdf",
         headers={"Content-Disposition":'attachment; filename="dadyar-answer-sheets.pdf"',
                  "X-Sheet-Count":str(len(batch.students))})
+
 
 def decode_pdf_or_image(data,ctype):
     if ctype=="application/pdf":
@@ -278,16 +354,13 @@ def scan_bubbles(aligned,n):
     return answers,uncertain,None
 
 @app.post("/v1/sheets/inspect")
-async def inspect(file:UploadFile=File(...),answer_key:str=Form(...),negative_coefficient:float=Form(3)):
+async def inspect(file:UploadFile=File(...),user=Depends(verify_user),credentials:HTTPAuthorizationCredentials=Depends(bearer)):
+    token=credentials.credentials
     if file.content_type not in {"image/jpeg","image/png","image/webp","application/pdf"}:
         raise HTTPException(415,"فرمت پشتیبانی نمی‌شود.")
     data=await file.read()
-    if not data or len(data)>LIMIT: raise HTTPException(413,"فایل خالی یا بزرگ‌تر از ۱۵ مگابایت است.")
-    try:key=[int(x) for x in json.loads(answer_key)]
-    except Exception: raise HTTPException(400,"کلید پاسخ نامعتبر است.")
-    if not 1<=len(key)<=120 or any(x not in [1,2,3,4] for x in key):
-        raise HTTPException(400,"کلید باید ۱ تا ۱۲۰ پاسخ از ۱ تا ۴ داشته باشد.")
-    if negative_coefficient<0: raise HTTPException(400,"ضریب نمره منفی نمی‌تواند منفی باشد.")
+    if not data or len(data)>LIMIT:
+        raise HTTPException(413,"فایل خالی یا بزرگ‌تر از ۱۵ مگابایت است.")
     if SECRET=="CHANGE-ME-BEFORE-PRODUCTION":
         raise HTTPException(503,"کلید امن QR روی سرویس تنظیم نشده است.")
     results=[]; detector=cv2.QRCodeDetector()
@@ -295,28 +368,44 @@ async def inspect(file:UploadFile=File(...),answer_key:str=Form(...),negative_co
         aligned,qr=orient_and_align(img,detector)
         if aligned is None:
             results.append({"page":i,"status":"review_required","reason":"علامت‌های مرجع یا QR در جهت معتبر پیدا نشد؛ احتمال چرخش، برش یا کیفیت پایین تصویر."}); continue
-        student=verify_qr(qr) if qr else None
-        if not student:
+        student_qr=verify_qr(qr) if qr else None
+        if not student_qr:
             results.append({"page":i,"status":"review_required","reason":"QR اختصاصی معتبر پیدا نشد."}); continue
-        if student.get("question_count")!=len(key):
-            results.append({"page":i,"status":"review_required","reason":"تعداد سؤال با کلید پاسخ یکسان نیست.","student":student}); continue
+        try:
+            exam_id=uuid.UUID(str(student_qr.get("exam_id")))
+            student_id=uuid.UUID(str(student_qr.get("student_id")))
+        except Exception:
+            results.append({"page":i,"status":"review_required","reason":"شناسه آزمون یا دانش‌آموز در QR معتبر نیست."}); continue
+        exam=await exam_context(exam_id,token)
+        if not exam:
+            results.append({"page":i,"status":"review_required","reason":"آزمون در مدرسه فعلی پیدا نشد یا به آن دسترسی مجاز نیست.","student":student_qr}); continue
+        student=await student_context(student_id,exam["institution_id"],token)
+        if not student or student.get("student_code")!=student_qr.get("student_code"):
+            results.append({"page":i,"status":"review_required","reason":"دانش‌آموز QR با اطلاعات مدرسه مطابقت ندارد.","student":student_qr}); continue
+        key=await exam_answer_key(exam_id,token)
+        if not key:
+            results.append({"page":i,"status":"review_required","reason":"کلید پاسخ معتبر برای آزمون پیدا نشد.","student":student_qr}); continue
+        if student_qr.get("question_count")!=len(key) or int(exam["question_count"])!=len(key):
+            results.append({"page":i,"status":"review_required","reason":"تعداد سؤال با کلید پاسخ یکسان نیست.","student":student_qr}); continue
         answers,uncertain,error=scan_bubbles(aligned,len(key))
         if error:
-            results.append({"page":i,"status":"review_required","reason":error,"student":student}); continue
+            results.append({"page":i,"status":"review_required","reason":error,"student":student_qr}); continue
         uncertain_q={u["question"] for u in uncertain}
         correct=sum(a==k for a,k in zip(answers,key) if a is not None)
         blank=sum(a is None and q not in uncertain_q for q,a in enumerate(answers,1))
         unresolved=len(uncertain_q)
         wrong=len(key)-correct-blank-unresolved
-        score=correct-(wrong/negative_coefficient if negative_coefficient>0 else 0)
+        coefficient=float(exam.get("negative_coefficient") or 3)
+        score=correct-(wrong/coefficient if coefficient>0 else 0)
         results.append({"page":i,"status":"review_required" if uncertain else "processed",
-            "student":student,"answers":answers,"correct":correct,"wrong":wrong,"blank":blank,
+            "student":student_qr,"answers":answers,"correct":correct,"wrong":wrong,"blank":blank,
             "unresolved":unresolved,"score":round(score,2),"uncertain":uncertain})
     return {"pages":results,"scoring":"correct - wrong / negative_coefficient; blank=0",
-            "warning":"این نسخه باید با چند نمونه چاپ و اسکن واقعی کالیبره شود. وضعیت review_required را بدون بازبینی انسانی نهایی نکنید."}
+            "warning":"پاسخ‌های مبهم را بازبینی کنید. دقت نهایی باید با برگه‌های چاپ و اسکن واقعی کالیبره شود."}
+
 
 @app.post("/v1/reports/excel")
-def excel(rows:List[ReportRow]):
+def excel(rows:List[ReportRow],user=Depends(verify_user)):
     wb=Workbook(); ws=wb.active; ws.title="گزارش آزمون"
     ws.append(["نام دانش‌آموز","کد","آزمون","صحیح","غلط","سفید","نمره خام","تعداد سؤال"])
     for cell in ws[1]:
