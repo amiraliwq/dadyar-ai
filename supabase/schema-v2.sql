@@ -80,6 +80,8 @@ create table if not exists public.submissions (
   unique (exam_id, student_id)
 );
 
+alter table public.submissions add column if not exists uncertain_answers jsonb not null default '[]'::jsonb;
+
 create index if not exists classes_institution_idx on public.classes(institution_id);
 create index if not exists students_institution_idx on public.students(institution_id);
 create index if not exists students_class_idx on public.students(class_id);
