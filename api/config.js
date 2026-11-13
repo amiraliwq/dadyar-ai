@@ -1,4 +1,4 @@
-export default function handler(req, res) {
+module.exports = function handler(req, res) {
   res.setHeader("Cache-Control", "no-store, max-age=0");
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   if (req.method !== "GET") {
@@ -9,4 +9,4 @@ export default function handler(req, res) {
   const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "";
   const omrApiUrl = process.env.OMR_API_URL || "";
   return res.status(200).json({ supabaseUrl, supabaseAnonKey, omrApiUrl });
-}
+};
