@@ -149,7 +149,7 @@ def draw_sheet(c,batch,s):
     # Main information panel, modeled on the supplied reference sheet.
     c.setStrokeColorRGB(.55,.55,.55); c.setLineWidth(.55)
     c.rect(84,H-164,W-120,132,stroke=1,fill=0)
-    qrdata={"sheet_id":str(uuid.uuid4()),"exam_id":batch.exam_id,"student_id":s.student_id,
+    qrdata={"sheet_id":str(uuid.uuid4()),"exam_id":str(batch.exam_id),"student_id":str(s.student_id),
             "student_code":s.code,"question_count":batch.question_count}
     qr=qrcode.QRCode(box_size=5,border=2,error_correction=qrcode.constants.ERROR_CORRECT_M)
     qr.add_data(signed_qr(qrdata)); qr.make(fit=True)
