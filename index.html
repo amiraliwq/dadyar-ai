@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b1020"><title>دادیار AI | مدیریت آزمون</title>
+<style>
+:root{color-scheme:dark;--bg:#090e1b;--panel:#111a2d;--panel2:#17233a;--line:#263550;--text:#edf3ff;--muted:#9aabc5;--red:#f05252;--cyan:#4dd8d0;--green:#48c78e}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 80% 0%,#17294a 0,transparent 42%),var(--bg);color:var(--text);font-family:Tahoma,Arial,sans-serif;min-height:100vh}
+header{padding:22px max(20px,calc((100vw - 1180px)/2));display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ffffff12;background:#090e1bd9;position:sticky;top:0;z-index:2;backdrop-filter:blur(16px)}
+.brand{display:flex;align-items:center;gap:12px}.logo{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#ff5555,#a21c36);display:grid;place-items:center;font-size:22px;font-weight:bold;box-shadow:0 8px 30px #e43b4b44}.brand b{font-size:19px}.brand small{display:block;color:var(--muted);margin-top:4px}
+main{max-width:1180px;margin:34px auto;padding:0 20px}.hero{display:flex;justify-content:space-between;gap:18px;align-items:end;margin-bottom:24px}.eyebrow{color:var(--cyan);font-size:12px;letter-spacing:1px}.hero h1{font-size:clamp(25px,4vw,38px);margin:10px 0}.hero p{color:var(--muted);margin:0;line-height:1.9}.status{border:1px solid #e5b34b55;background:#e5b34b12;color:#ffd47b;border-radius:12px;padding:10px 13px;font-size:12px;white-space:nowrap}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:22px 0}.stat,.card{background:linear-gradient(145deg,#141f34,#0f1728);border:1px solid var(--line);border-radius:18px}.stat{padding:18px}.stat span{color:var(--muted);font-size:13px}.stat strong{display:block;font-size:28px;margin-top:9px}
+.layout{display:grid;grid-template-columns:1.05fr .95fr;gap:16px}.card{padding:22px}.card h2{font-size:17px;margin:0 0 18px}.field{margin:14px 0}.field label{display:block;color:var(--muted);font-size:12px;margin-bottom:8px}input,select{width:100%;border:1px solid var(--line);background:#0b1425;color:var(--text);border-radius:10px;padding:12px;font:inherit;outline:none}input:focus,select:focus{border-color:var(--cyan)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.answers{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.answers label{background:#0b1425;border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center;cursor:pointer}.answers input{width:auto;accent-color:var(--red)}.qrow{display:grid;grid-template-columns:46px 1fr;align-items:center;gap:10px;margin:9px 0}.qnum{color:var(--muted);font-size:12px}
+button{border:0;border-radius:11px;background:linear-gradient(120deg,#f05252,#c52e48);color:white;padding:13px 18px;font:inherit;font-weight:bold;cursor:pointer}button.secondary{background:#1c2b43;border:1px solid var(--line);color:var(--text)}button:disabled{opacity:.45;cursor:not-allowed}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.result{margin-top:16px;padding:16px;border-radius:12px;background:#48c78e12;border:1px solid #48c78e44;display:none;line-height:2}.result strong{font-size:25px;color:var(--green)}.hint{color:var(--muted);font-size:12px;line-height:1.9}.list{display:flex;flex-direction:column;gap:9px}.item{padding:12px;border-radius:11px;background:#0b1425;border:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;font-size:13px}.empty{color:var(--muted);text-align:center;padding:26px 8px}
+footer{text-align:center;color:#73839e;padding:34px 16px;font-size:12px}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}.hero{align-items:start;flex-direction:column}.status{white-space:normal}.grid2{grid-template-columns:1fr}}
+</style></head>
+<body>
+<header><div class="brand"><div class="logo">د</div><div><b>دادیار AI</b><small>سامانه هوشمند مدیریت و تصحیح آزمون</small></div></div><span class="hint">نسخه آغازین · ۰.۱</span></header>
+<main>
+<section class="hero"><div><div class="eyebrow">DADYAR / EXAM CONTROL</div><h1>مرکز مدیریت آزمون‌ها</h1><p>کلید پاسخ را تعریف کن، پاسخ دانش‌آموز را وارد کن و نتیجه را با نمره منفی استاندارد محاسبه کن.</p></div><div class="status">● نسخه آزمایشی — ذخیره‌سازی روی همین مرورگر</div></section>
+<section class="stats"><div class="stat"><span>تعداد آزمون‌های ثبت‌شده</span><strong id="examCount">۰</strong></div><div class="stat"><span>تعداد پاسخ‌برگ‌های بررسی‌شده</span><strong id="gradedCount">۰</strong></div><div class="stat"><span>ضریب نمره منفی</span><strong>۳</strong></div></section>
+<section class="layout">
+<div class="card"><h2>۱. تعریف آزمون و کلید پاسخ</h2>
+<div class="field"><label>عنوان آزمون</label><input id="examTitle" placeholder="مثلاً آزمون علوم — فصل اتم"></div>
+<div class="grid2"><div class="field"><label>تاریخ آزمون</label><input id="examDate" type="date"></div><div class="field"><label>تعداد سؤال (۱ تا ۱۲۰)</label><input id="questionCount" type="number" min="1" max="120" value="10"></div></div>
+<div class="field"><label>کلید پاسخ — برای هر سؤال گزینه صحیح را انتخاب کن</label><div id="keyFields"></div></div>
+<div class="actions"><button id="buildKey" class="secondary">ساخت / به‌روزرسانی کلید</button><button id="saveExam">ذخیره آزمون</button></div>
+<p class="hint">گزینه‌ها به صورت ۱، ۲، ۳ و ۴ هستند. پاسخ خالی نمره منفی ندارد.</p></div>
+<div class="card"><h2>۲. تصحیح پاسخ دانش‌آموز</h2>
+<div class="grid2"><div class="field"><label>نام و نام خانوادگی</label><input id="studentName" placeholder="نام دانش‌آموز"></div><div class="field"><label>کد دانش‌آموزی</label><input id="studentCode" placeholder="کد"></div></div>
+<div class="field"><label>پاسخ‌ها — گزینه خالی یعنی بدون پاسخ</label><div id="studentFields" class="empty">ابتدا تعداد سؤال را تعیین و کلید را بساز.</div></div>
+<div class="actions"><button id="gradeBtn">تصحیح و محاسبه نمره</button><button id="clearBtn" class="secondary">پاک‌کردن پاسخ‌ها</button></div>
+<div class="result" id="result"></div><p class="hint">فرمول نمره خام: صحیح − (غلط ÷ ۳). این محاسبه در نسخه فعلی روی پاسخ‌های دستی انجام می‌شود.</p></div>
+</section>
+<section class="card" style="margin-top:16px"><h2>گزارش‌های اخیر</h2><div id="reports" class="list"><div class="empty">هنوز گزارشی ثبت نشده است.</div></div></section>
+</main>
+<footer>دادیار AI · سامانه مدیریت آزمون و تصحیح پاسخ‌برگ<br>طراحی و توسعه: امیرعلی رضی خادمی</footer>
+<script>
+const $=id=>document.getElementById(id);let key=[],saved=JSON.parse(localStorage.getItem('dadyar_reports')||'[]'),exams=JSON.parse(localStorage.getItem('dadyar_exams')||'[]');
+const fa=n=>Number(n).toLocaleString('fa-IR');
+function build(){let n=Math.max(1,Math.min(120,Number($('questionCount').value)||1));$('questionCount').value=n;key=Array.from({length:n},(_,i)=>key[i]||'');$('keyFields').innerHTML=key.map((v,i)=>'<div class="qrow"><span class="qnum">سؤال '+fa(i+1)+'</span><div class="answers">'+['1','2','3','4'].map(a=>'<label><input type="radio" name="k'+i+'" value="'+a+'" '+(v===a?'checked':'')+'> '+a+'</label>').join('')+'</div></div>').join('');$('studentFields').innerHTML=key.map((v,i)=>'<div class="qrow"><span class="qnum">سؤال '+fa(i+1)+'</span><select id="s'+i+'"><option value="">بدون پاسخ</option><option value="1">گزینه ۱</option><option value="2">گزینه ۲</option><option value="3">گزینه ۳</option><option value="4">گزینه ۴</option></select></div>').join('');}
+function readKey(){key=key.map((_,i)=>document.querySelector('input[name="k'+i+'"]:checked')?.value||'');}
+function update(){ $('examCount').textContent=fa(exams.length);$('gradedCount').textContent=fa(saved.length);$('reports').innerHTML=saved.length?saved.slice().reverse().slice(0,12).map(x=>'<div class="item"><span>'+escapeHtml(x.name)+' · '+escapeHtml(x.exam)+'</span><b>'+fa(x.score.toFixed(2))+' / '+fa(x.total)+'</b></div>').join(''):'<div class="empty">هنوز گزارشی ثبت نشده است.</div>';}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+$('buildKey').onclick=build;
+$('saveExam').onclick=()=>{readKey();if(!key.length||key.some(x=>!x)){alert('لطفاً کلید تمام سؤال‌ها را مشخص کن.');return;}let e={title:$('examTitle').value.trim()||'آزمون بدون عنوان',date:$('examDate').value,count:key.length,key:[...key]};exams.push(e);localStorage.setItem('dadyar_exams',JSON.stringify(exams));update();alert('آزمون در همین مرورگر ذخیره شد.');};
+$('gradeBtn').onclick=()=>{readKey();if(!key.length||key.some(x=>!x)){alert('ابتدا کلید کامل پاسخ را تعیین کن.');return;}let correct=0,wrong=0,blank=0;key.forEach((a,i)=>{let v=$('s'+i)?.value||'';if(!v)blank++;else if(v===a)correct++;else wrong++;});let score=correct-wrong/3;let name=$('studentName').value.trim()||'دانش‌آموز بدون نام';let exam=$('examTitle').value.trim()||'آزمون جاری';let row={name,code:$('studentCode').value,exam,correct,wrong,blank,score,total:key.length,date:new Date().toISOString()};saved.push(row);localStorage.setItem('dadyar_reports',JSON.stringify(saved));$('result').style.display='block';$('result').innerHTML='<strong>'+fa(score.toFixed(2))+' از '+fa(key.length)+'</strong><br>صحیح: '+fa(correct)+' · غلط: '+fa(wrong)+' · سفید: '+fa(blank)+'<br>نمره خام با ضریب منفی ۳';update();};
+$('clearBtn').onclick=()=>{document.querySelectorAll('#studentFields select').forEach(x=>x.value='');$('result').style.display='none';};
+build();update();
+</script></body></html>
