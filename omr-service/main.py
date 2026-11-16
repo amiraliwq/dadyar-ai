@@ -192,14 +192,17 @@ def draw_sheet(c,batch,s):
     # Four equal columns, 30 rows each. Bubble centers are blank; option
     # numerals are printed above the bubbles, never inside them.
     left,right=margin+9*mm,W-margin-9*mm
-    colw=(right-left)/4
+    cols=max(1,min(4,(batch.question_count+29)//30))
+    colw=(right-left)/cols
     bubble_w=5.6*mm
     bubble_h=3.5*mm
-    for col in range(4):
+    for col in range(cols):
         x0=right-(col+1)*colw
-        xR=x0+colw
+        group_w=min(colw,36*mm)
+        group_left=x0+(colw-group_w)/2
+        xR=group_left+group_w
         c.setFillColorRGB(0,0,0)
-        txt(c,x0+7*mm,row_top+5*mm,"سؤال",6.5)
+        txt(c,group_left+4*mm,row_top+5*mm,"سؤال",6.5)
         for opt in range(4):
             bx=xR-(6*mm+opt*7.3*mm)
             c.setFont("Helvetica-Bold",6.5)
@@ -210,7 +213,7 @@ def draw_sheet(c,batch,s):
                 continue
             y=row_top-row*row_step
             c.setFont("Helvetica-Bold",6.5)
-            c.drawRightString(x0+7*mm,y-2.2,str(q))
+            c.drawRightString(group_left+4*mm,y-2.2,str(q))
             for opt in range(4):
                 bx=xR-(6*mm+opt*7.3*mm)
                 c.setStrokeColorRGB(0,0,0); c.setLineWidth(.5)
@@ -218,7 +221,7 @@ def draw_sheet(c,batch,s):
 
     # Very light dotted column separators; outside bubble contours.
     c.saveState(); c.setStrokeColorRGB(.82,.82,.82); c.setLineWidth(.35); c.setDash(1,2)
-    for k in range(1,4):
+    for k in range(1,cols):
         x=right-k*colw
         c.line(x,row_top+8*mm,x,row_top-29*row_step-4*mm)
     c.restoreState()
@@ -344,13 +347,17 @@ def scan_bubbles(aligned,n):
     mm=72/25.4
     margin=20*mm
     left,right=margin+9*mm,W-margin-9*mm
-    colw=(right-left)/4
+    cols=max(1,min(4,(n+29)//30))
+    colw=(right-left)/cols
     row_top=H-78*mm
     row_step=6.1*mm
     sx=CANON_W/W; sy=CANON_H/H
     for q in range(1,n+1):
         col=(q-1)//30; row=(q-1)%30
-        x0=right-(col+1)*colw; xR=x0+colw
+        x0=right-(col+1)*colw
+        group_w=min(colw,36*mm)
+        group_left=x0+(colw-group_w)/2
+        xR=group_left+group_w
         y=row_top-row*row_step
         cy=int((H-y)*sy)
         scores=[]
