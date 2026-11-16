@@ -235,6 +235,59 @@ def draw_sheet(c,batch,s):
     c.setFont(FA_FONT,6); c.drawCentredString(W/2,13*mm,fa("برگه را کامل، صاف و بدون برش اسکن کنید."))
     return qrdata
 
+
+@app.get("/")
+def root():
+    return {"service":"Dadyar AI OMR","status":"ok","health":"/health","docs":"/docs"}
+
+@app.post("/v1/sheets/generate")
+async def generate_sheets(batch:Batch,user=Depends(verify_user),credentials:HTTPAuthorizationCredentials=Depends(bearer)):
+    """Create one authenticated, signed-QR A4 answer sheet per verified student."""
+    token=credentials.credentials
+    if SECRET=="CHANGE-ME-BEFORE-PRODUCTION":
+        raise HTTPException(503,"کلید امن QR روی سرویس تنظیم نشده است.")
+    if not batch.students:
+        raise HTTPException(400,"حداقل یک دانش‌آموز برای تولید پاسخ‌برگ انتخاب کنید.")
+    if len(batch.students)>300:
+        raise HTTPException(400,"در هر نوبت حداکثر ۳۰۰ پاسخ‌برگ تولید می‌شود.")
+    exam=await exam_context(batch.exam_id,token)
+    if not exam:
+        raise HTTPException(404,"آزمون در فضای مدرسه فعلی پیدا نشد.")
+    if int(exam.get("question_count") or 0)!=batch.question_count:
+        raise HTTPException(409,"تعداد سؤال‌های درخواستی با آزمون ثبت‌شده یکسان نیست.")
+    answer_key=await exam_answer_key(batch.exam_id,token)
+    if not answer_key or len(answer_key)!=batch.question_count:
+        raise HTTPException(409,"کلید پاسخ معتبر برای این آزمون ثبت نشده است.")
+    seen=set()
+    verified_students=[]
+    for requested in batch.students:
+        if requested.student_id in seen:
+            continue
+        seen.add(requested.student_id)
+        db_student=await student_context(requested.student_id,exam["institution_id"],token)
+        if not db_student:
+            raise HTTPException(403,"یکی از دانش‌آموزان انتخاب‌شده به این آزمون یا مدرسه تعلق ندارد.")
+        if str(db_student.get("student_code") or "")!=str(requested.code):
+            raise HTTPException(409,"کد دانش‌آموزی با اطلاعات ثبت‌شده مطابقت ندارد.")
+        verified_students.append(Student(
+            student_id=requested.student_id,
+            name=(str(db_student.get("first_name") or "")+" "+str(db_student.get("last_name") or "")).strip(),
+            code=str(db_student.get("student_code") or "")
+        ))
+    if not verified_students:
+        raise HTTPException(400,"دانش‌آموز معتبری برای تولید پاسخ‌برگ انتخاب نشده است.")
+    output=io.BytesIO()
+    pdf=canvas.Canvas(output,pagesize=A4,pageCompression=1)
+    pdf.setTitle(fa("پاسخ‌برگ "+batch.exam_title))
+    pdf.setAuthor("Dadyar AI")
+    for student in verified_students:
+        draw_sheet(pdf,batch,student)
+        pdf.showPage()
+    pdf.save()
+    output.seek(0)
+    return StreamingResponse(output,media_type="application/pdf",
+        headers={"Content-Disposition":'attachment; filename="dadyar-answer-sheets.pdf"',"Cache-Control":"no-store"})
+
 def decode_pdf_or_image(data,ctype):
     if ctype=="application/pdf":
         doc=fitz.open(stream=data,filetype="pdf")
