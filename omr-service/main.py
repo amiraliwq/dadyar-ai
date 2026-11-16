@@ -22,7 +22,7 @@ bearer=HTTPBearer(auto_error=False)
 W,H=A4
 LIMIT=15*1024*1024
 CANON_W,CANON_H=2480,3508
-app=FastAPI(title="Dadyar AI OMR",version="0.3.0")
+app=FastAPI(title="Dadyar AI OMR",version="0.5.0")
 app.add_middleware(CORSMiddleware,allow_origins=[x.strip() for x in os.getenv("CORS_ORIGINS","http://localhost:3000").split(",") if x.strip()],allow_credentials=False,allow_methods=["GET","POST"],allow_headers=["*"])
 
 FONT_PATH=os.getenv("DADYAR_FONT","/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")
@@ -83,7 +83,7 @@ def verify_qr(raw):
 
 @app.get("/health")
 def health():
-    return {"status":"ok","service":"dadyar-omr","version":"0.4.0",
+    return {"status":"ok","service":"dadyar-omr","version":"0.5.0",
             "database_configured":bool(SUPABASE_URL and SUPABASE_ANON_KEY),
             "qr_configured":SECRET!="CHANGE-ME-BEFORE-PRODUCTION"}
 
@@ -138,105 +138,99 @@ async def exam_answer_key(exam_id,token):
         return None
 
 def draw_sheet(c,batch,s):
-    # Four large registration squares + repeated side ticks make deskew/crop detection reliable.
-    mark=14
-    for x,y in [(36,36),(W-36,36),(36,H-36),(W-36,H-36)]:
-        c.setFillColorRGB(0,0,0); c.rect(x-mark/2,y-mark/2,mark,mark,stroke=0,fill=1)
-    for side in (48,W-48):
-        for y in range(155,int(H-155),43):
-            c.rect(side-2.2,y-5.5,4.4,11,stroke=0,fill=1)
+    # A4 OMR v2: 20 mm safe margins, 10 mm fiducials, four RTL columns.
+    mm=72/25.4
+    margin=20*mm
+    mark=10*mm
+    # Four 10 x 10 mm solid registration squares, fully inside the safe area.
+    for x,y in [(margin,margin),(W-margin-mark,margin),
+                (margin,H-margin-mark),(W-margin-mark,H-margin-mark)]:
+        c.setFillColorRGB(0,0,0); c.rect(x,y,mark,mark,stroke=0,fill=1)
 
-    # Main information panel, modeled on the supplied reference sheet.
-    c.setStrokeColorRGB(.55,.55,.55); c.setLineWidth(.55)
-    c.rect(84,H-164,W-120,132,stroke=1,fill=0)
+    row_top=H-78*mm
+    row_step=6.1*mm
+    # Thirty timing tracks per side: one track per physical row shared by
+    # the four parallel columns (120 questions total).
+    c.setFillColorRGB(0,0,0)
+    for row in range(30):
+        cy=row_top-row*row_step
+        c.rect(margin+1*mm,cy-1*mm,6*mm,2*mm,stroke=0,fill=1)
+        c.rect(W-margin-7*mm,cy-1*mm,6*mm,2*mm,stroke=0,fill=1)
+
+    # Header: QR has a true 10 mm white quiet zone on every side.
     qrdata={"sheet_id":str(uuid.uuid4()),"exam_id":str(batch.exam_id),"student_id":str(s.student_id),
             "student_code":s.code,"question_count":batch.question_count}
-    qr=qrcode.QRCode(box_size=5,border=2,error_correction=qrcode.constants.ERROR_CORRECT_M)
+    qr=qrcode.QRCode(box_size=5,border=0,error_correction=qrcode.constants.ERROR_CORRECT_M)
     qr.add_data(signed_qr(qrdata)); qr.make(fit=True)
     qrb=io.BytesIO(); qr.make_image(fill_color="black",back_color="white").save(qrb,format="PNG"); qrb.seek(0)
-    c.drawImage(ImageReader(qrb),99,H-139,width=66,height=66)
+    quiet_x=margin+11*mm
+    quiet_y=H-margin-42*mm
+    quiet_size=40*mm
+    c.setFillColorRGB(1,1,1); c.rect(quiet_x,quiet_y,quiet_size,quiet_size,stroke=0,fill=1)
+    c.drawImage(ImageReader(qrb),quiet_x+10*mm,quiet_y+10*mm,width=20*mm,height=20*mm,mask="auto")
     c.setFillColorRGB(0,0,0)
-    txt(c,164,H-145,"شناسه اختصاصی",6)
+    txt(c,quiet_x+quiet_size,quiet_y-3*mm,"شناسه اختصاصی",6)
 
-    # Student information box
-    c.rect(W-264,H-156,224,110,stroke=1,fill=0)
-    txt(c,W-50,H-63,"مشخصات دانش‌آموز",9)
-    c.line(W-255,H-70,W-49,H-70)
-    txt(c,W-50,H-88,"نام: "+s.name,7)
-    txt(c,W-50,H-103,"کد دانش‌آموزی: "+s.code,7)
-    txt(c,W-50,H-118,"کلاس: —",7)
-    txt(c,W-50,H-133,"تاریخ آزمون: ....................",7)
-    txt(c,W-50,H-147,"مدت آزمون: ............ دقیقه",7)
+    # Student information panel at top-right, kept clear of the QR and title.
+    info_x=W-margin-78*mm; info_y=H-margin-40*mm
+    c.setStrokeColorRGB(0,0,0); c.setLineWidth(.55)
+    c.roundRect(info_x,info_y,78*mm,40*mm,3*mm,stroke=1,fill=0)
+    txt(c,W-margin-2*mm,H-28*mm,"مشخصات دانش‌آموز",8)
+    c.setLineWidth(.35); c.line(info_x+3*mm,H-31*mm,W-margin-3*mm,H-31*mm)
+    txt(c,W-margin-3*mm,H-38*mm,"نام: "+s.name,7)
+    txt(c,W-margin-3*mm,H-46*mm,"کد دانش‌آموزی: "+s.code,7)
+    txt(c,W-margin-3*mm,H-54*mm,"کلاس: —    تاریخ: ................",6)
+    txt(c,W-margin-3*mm,H-62*mm,"مدت آزمون: ........ دقیقه",6)
 
-    c.setFont(FA_FONT,13); c.drawCentredString(W/2+8,H-87,fa(batch.school_name))
-    c.setFont(FA_FONT,6); c.drawCentredString(W/2+8,H-101,fa(batch.site_name))
-    c.setFont(FA_FONT,12); c.drawCentredString(W/2+8,H-126,fa("پاسخ‌برگ آزمون"))
-    c.setFont(FA_FONT,9); c.drawCentredString(W/2+8,H-143,fa(batch.subject))
+    c.setFillColorRGB(0,0,0)
+    c.setFont(FA_FONT,12); c.drawCentredString(W/2,H-35*mm,fa(batch.school_name))
+    c.setFont(FA_FONT,7); c.drawCentredString(W/2,H-42*mm,fa(batch.site_name))
+    c.setFont(FA_FONT,11); c.drawCentredString(W/2,H-52*mm,fa("پاسخ‌برگ آزمون"))
+    c.setFont(FA_FONT,7); c.drawCentredString(W/2,H-59*mm,fa(batch.exam_title+" · "+batch.subject))
+    c.setFont(FA_FONT,6.5); c.drawCentredString(W/2,H-68*mm,fa("در هر سؤال فقط یک گزینه را کاملاً پر کنید؛ از مداد نرم استفاده کنید."))
 
-    c.setFont(FA_FONT,7); c.drawCentredString(W/2,H-184,fa("در هر سؤال فقط یک گزینه را کاملاً پر کنید؛ از مداد نرم استفاده کنید."))
-
-    # Four RTL columns; each question has four numbered bubbles.
-    left,right=84,W-40
+    # Four equal columns, 30 rows each. Bubble centers are blank; option
+    # numerals are printed above the bubbles, never inside them.
+    left,right=margin+9*mm,W-margin-9*mm
     colw=(right-left)/4
-    top=H-220
-    row_gap=17.2
+    bubble_w=5.6*mm
+    bubble_h=3.5*mm
     for col in range(4):
         x0=right-(col+1)*colw
-        c.setFont(FA_FONT,7); c.drawString(x0+5,top+17,fa("سؤال"))
+        xR=x0+colw
+        c.setFillColorRGB(0,0,0)
+        txt(c,x0+7*mm,row_top+5*mm,"سؤال",6.5)
         for opt in range(4):
-            c.setFont("Helvetica-Bold",7); c.drawCentredString(x0+49+opt*18,top+17,str(opt+1))
+            bx=xR-(6*mm+opt*7.3*mm)
+            c.setFont("Helvetica-Bold",6.5)
+            c.drawCentredString(bx,row_top+5*mm,str(opt+1))
         for row in range(30):
             q=col*30+row+1
-            if q>batch.question_count: break
-            y=top-row*row_gap
-            c.setFont("Helvetica-Bold",7); c.drawString(x0+8,y-2,str(q))
+            if q>batch.question_count:
+                continue
+            y=row_top-row*row_step
+            c.setFont("Helvetica-Bold",6.5)
+            c.drawRightString(x0+7*mm,y-2.2,str(q))
             for opt in range(4):
-                bx=x0+49+opt*18
-                c.setLineWidth(.65); c.circle(bx,y,6.1,stroke=1,fill=0)
+                bx=xR-(6*mm+opt*7.3*mm)
+                c.setStrokeColorRGB(0,0,0); c.setLineWidth(.5)
+                c.roundRect(bx-bubble_w/2,y-bubble_h/2,bubble_w,bubble_h,bubble_h/2,stroke=1,fill=0)
 
-    # Column separators and footer.
+    # Very light dotted column separators; outside bubble contours.
+    c.saveState(); c.setStrokeColorRGB(.82,.82,.82); c.setLineWidth(.35); c.setDash(1,2)
     for k in range(1,4):
         x=right-k*colw
-        c.setStrokeColorRGB(.78,.78,.78); c.line(x,H-205,x,105)
-    c.setStrokeColorRGB(.65,.65,.65); c.line(84,82,W-40,82)
-    c.setFont("Helvetica",6); c.drawString(84,69,"dadyar-ai.vercel.app")
-    c.setFont(FA_FONT,6); c.drawCentredString(W/2,69,fa(batch.school_name))
-    c.setFont("Helvetica",6); c.drawRightString(W-40,69,"شناسه برگه: "+qrdata["sheet_id"][:8])
-    c.setFont(FA_FONT,6); c.drawCentredString(W/2,47,fa("برای تصحیح دقیق، برگه را کامل و بدون برش اسکن کنید."))
+        c.line(x,row_top+8*mm,x,row_top-29*row_step-4*mm)
+    c.restoreState()
+
+    # Footer remains inside the 20 mm safe margin.
+    c.setStrokeColorRGB(.65,.65,.65); c.setLineWidth(.35)
+    c.line(margin+9*mm,34*mm,W-margin-9*mm,34*mm)
+    c.setFont("Helvetica",6); c.drawString(margin+9*mm,29*mm,"dadyar-ai-web.vercel.app")
+    c.setFont(FA_FONT,6); c.drawCentredString(W/2,29*mm,fa(batch.school_name))
+    c.setFont(FA_FONT,5.5); c.drawRightString(W-margin-9*mm,29*mm,fa("شناسه برگه: "+qrdata["sheet_id"][:8]))
+    c.setFont(FA_FONT,6); c.drawCentredString(W/2,13*mm,fa("برگه را کامل، صاف و بدون برش اسکن کنید."))
     return qrdata
-
-@app.post("/v1/sheets/generate")
-async def generate(batch:Batch,user=Depends(verify_user),credentials:HTTPAuthorizationCredentials=Depends(bearer)):
-    token=credentials.credentials
-    if not batch.students or len(batch.students)>500:
-        raise HTTPException(400,"تعداد دانش‌آموز باید بین ۱ تا ۵۰۰ باشد.")
-    if SECRET=="CHANGE-ME-BEFORE-PRODUCTION":
-        raise HTTPException(503,"ابتدا DADYAR_QR_SECRET امن را در تنظیمات سرویس تعریف کنید.")
-    exam=await exam_context(batch.exam_id,token)
-    if not exam:
-        raise HTTPException(404,"آزمون پیدا نشد یا به آن دسترسی ندارید.")
-    if int(exam["question_count"])!=batch.question_count:
-        raise HTTPException(400,"تعداد سؤال با آزمون ثبت‌شده در پایگاه داده یکسان نیست.")
-    ids=[str(s.student_id) for s in batch.students]
-    if len(set(ids))!=len(ids):
-        raise HTTPException(400,"شناسه دانش‌آموز تکراری است.")
-    rows=await supabase_rows("students",token,{"select":"id,institution_id,student_code,first_name,last_name",
-        "id":"in.("+",".join(ids)+")","institution_id":"eq."+exam["institution_id"]})
-    by_id={r["id"]:r for r in rows}
-    if len(by_id)!=len(ids):
-        raise HTTPException(403,"یک یا چند دانش‌آموز متعلق به مدرسه شما نیستند یا پیدا نشدند.")
-    batch.students=[Student(student_id=uuid.UUID(r["id"]),
-        name=(r.get("first_name","")+" "+r.get("last_name","")).strip(),code=r["student_code"])
-        for r in (by_id[str(s.student_id)] for s in batch.students)]
-    batch.exam_id=uuid.UUID(exam["id"])
-    bio=io.BytesIO(); c=canvas.Canvas(bio,pagesize=A4)
-    for s in batch.students:
-        draw_sheet(c,batch,s); c.showPage()
-    c.save(); bio.seek(0)
-    return StreamingResponse(bio,media_type="application/pdf",
-        headers={"Content-Disposition":'attachment; filename="dadyar-answer-sheets.pdf"',
-                 "X-Sheet-Count":str(len(batch.students))})
-
 
 def decode_pdf_or_image(data,ctype):
     if ctype=="application/pdf":
@@ -269,11 +263,14 @@ def find_fiducials(img):
     # largest dark square: QR finder patterns also look like square contours.
     zones=[(0,0),(1,0),(1,1),(0,1)] # TL,TR,BR,BL
     points=[]
-    expected_size_x=14/W* w
-    expected_size_y=14/H* h
+    mm=72/25.4
+    marker=10*mm
+    center=25*mm
+    expected_size_x=marker/W*w
+    expected_size_y=marker/H*h
     for zx,zy in zones:
-        tx=(36/W*w) if zx==0 else (w-36/W*w)
-        ty=(36/H*h) if zy==0 else (h-36/H*h)
+        tx=(center/W*w) if zx==0 else (w-center/W*w)
+        ty=(center/H*h) if zy==0 else (h-center/H*h)
         pool=[]
         for area,center,bw,bh in candidates:
             x,y=center
@@ -288,8 +285,9 @@ def find_fiducials(img):
         if not pool: return None
         points.append(min(pool,key=lambda p:p[0])[1])
     src=np.array(points,dtype=np.float32)
-    # registration-mark centers are 36pt from each A4 edge
-    dx=36/W*CANON_W; dy=36/H*CANON_H
+    # Registration-mark centers are 25 mm from each A4 edge.
+    center=25*72/25.4
+    dx=center/W*CANON_W; dy=center/H*CANON_H
     dst=np.array([[dx,dy],[CANON_W-dx,dy],[CANON_W-dx,CANON_H-dy],[dx,CANON_H-dy]],dtype=np.float32)
     M=cv2.getPerspectiveTransform(src,dst)
     return cv2.warpPerspective(img,M,(CANON_W,CANON_H),flags=cv2.INTER_CUBIC)
@@ -319,13 +317,23 @@ def orient_and_align(img,detector):
             return aligned,raw
     return None,None
 
-def bubble_score(gray,cx,cy,r):
-    # Estimate darkness inside the bubble while excluding its printed outline.
-    inner=np.zeros(gray.shape,np.uint8); ring=np.zeros(gray.shape,np.uint8)
-    cv2.circle(inner,(cx,cy),int(r*.58),255,-1)
-    cv2.circle(ring,(cx,cy),int(r*1.45),255,-1)
-    cv2.circle(ring,(cx,cy),int(r*1.12),0,-1)
-    inside=gray[inner>0]; outside=gray[ring>0]
+def bubble_score(gray,cx,cy,half_w,half_h):
+    # Score the blank interior of a rounded-rectangle bubble, excluding its outline.
+    Hh,Ww=gray.shape
+    inner=np.zeros((Hh,Ww),np.uint8); outer=np.zeros((Hh,Ww),np.uint8)
+    def rounded(mask,x1,y1,x2,y2,r,value):
+        x1=max(0,int(x1)); y1=max(0,int(y1)); x2=min(Ww-1,int(x2)); y2=min(Hh-1,int(y2))
+        if x2<=x1 or y2<=y1:return
+        r=max(1,min(int(r),(x2-x1)//2,(y2-y1)//2))
+        cv2.rectangle(mask,(x1+r,y1),(x2-r,y2),value,-1)
+        cv2.rectangle(mask,(x1,y1+r),(x2,y2-r),value,-1)
+        for px in (x1+r,x2-r):
+            for py in (y1+r,y2-r):
+                cv2.circle(mask,(px,py),r,value,-1)
+    rounded(inner,cx-half_w*.62,cy-half_h*.55,cx+half_w*.62,cy+half_h*.55,max(1,half_h*.45),255)
+    rounded(outer,cx-half_w*1.8,cy-half_h*1.8,cx+half_w*1.8,cy+half_h*1.8,max(1,half_h*1.1),255)
+    outer[inner>0]=0
+    inside=gray[inner>0]; outside=gray[outer>0]
     if inside.size==0 or outside.size==0:return 0.0
     baseline=float(np.median(outside))
     return float(np.mean(np.clip((baseline-inside)/max(35,baseline),0,1)))
@@ -333,14 +341,25 @@ def bubble_score(gray,cx,cy,r):
 def scan_bubbles(aligned,n):
     gray=cv2.cvtColor(aligned,cv2.COLOR_BGR2GRAY)
     answers=[]; uncertain=[]
-    left,right=84,W-40; colw=(right-left)/4; top=H-220; gap=17.2
+    mm=72/25.4
+    margin=20*mm
+    left,right=margin+9*mm,W-margin-9*mm
+    colw=(right-left)/4
+    row_top=H-78*mm
+    row_step=6.1*mm
     sx=CANON_W/W; sy=CANON_H/H
     for q in range(1,n+1):
-        col=(q-1)//30; row=(q-1)%30; x0=right-(col+1)*colw; y=top-row*gap
-        cy=int((H-y)*sy); scores=[]
+        col=(q-1)//30; row=(q-1)%30
+        x0=right-(col+1)*colw; xR=x0+colw
+        y=row_top-row*row_step
+        cy=int((H-y)*sy)
+        scores=[]
         for opt in range(4):
-            x=x0+49+opt*18; cx=int(x*sx); r=6.1*sx
-            scores.append(bubble_score(gray,cx,cy,r))
+            x=xR-(6*mm+opt*7.3*mm)
+            cx=int(x*sx)
+            half_w=(5.6*mm/2)*sx
+            half_h=(3.5*mm/2)*sy
+            scores.append(bubble_score(gray,cx,cy,half_w,half_h))
         order=np.argsort(scores)[::-1]; best=float(scores[order[0]]); second=float(scores[order[1]])
         marked=[j for j,v in enumerate(scores) if v>=.22]
         if len(marked)>1:
