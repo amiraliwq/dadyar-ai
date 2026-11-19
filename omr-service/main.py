@@ -22,7 +22,7 @@ bearer=HTTPBearer(auto_error=False)
 W,H=A4
 LIMIT=15*1024*1024
 CANON_W,CANON_H=2480,3508
-app=FastAPI(title="Dadyar AI OMR",version="0.5.0")
+app=FastAPI(title="Dadyar AI OMR",version="1.0.0")
 # Allow the production Vercel frontends plus explicitly configured origins.
 _ALLOWED_ORIGINS={x.strip().rstrip("/") for x in os.getenv("CORS_ORIGINS","").split(",") if x.strip()}
 _ALLOWED_ORIGINS.update({"https://dadyar-ai-web.vercel.app","https://dadyar-ai.vercel.app","http://localhost:3000"})
@@ -86,7 +86,7 @@ def verify_qr(raw):
 
 @app.get("/health")
 def health():
-    return {"status":"ok","service":"dadyar-omr","version":"0.5.0",
+    return {"status":"ok","service":"dadyar-omr","version":"1.0.0",
             "database_configured":bool(SUPABASE_URL and SUPABASE_ANON_KEY),
             "qr_configured":SECRET!="CHANGE-ME-BEFORE-PRODUCTION"}
 
@@ -143,48 +143,42 @@ async def exam_answer_key(exam_id,token):
 def fa_digits(value):
     return str(value).translate(str.maketrans("0123456789","۰۱۲۳۴۵۶۷۸۹"))
 
+def fa_digits(value):
+    return str(value).translate(str.maketrans("0123456789","۰۱۲۳۴۵۶۷۸۹"))
+
 def draw_sheet(c,batch,s):
-    """High-contrast A4 OMR: fixed RTL answer grid, unique signed QR, safe fiducials."""
+    """Production A4 OMR: four fixed 30-question blocks, RTL options, signed QR."""
     mm=72/25.4
     margin=20*mm
     mark=10*mm
-    # Fixed registration marks: 10 mm squares, centers exactly 25 mm from page edges.
     c.setFillColorRGB(0,0,0)
     for x,y in [(margin,margin),(W-margin-mark,margin),
                 (margin,H-margin-mark),(W-margin-mark,H-margin-mark)]:
         c.rect(x,y,mark,mark,stroke=0,fill=1)
 
-    # Per-student signed QR. Keep its 6 mm quiet zone and fixed upper-left location.
     qrdata={"sheet_id":str(uuid.uuid4()),"exam_id":str(batch.exam_id),
             "student_id":str(s.student_id),"student_code":s.code,
             "question_count":batch.question_count}
-    qr=qrcode.QRCode(box_size=7,border=0,error_correction=qrcode.constants.ERROR_CORRECT_H)
+    qr=qrcode.QRCode(box_size=8,border=0,error_correction=qrcode.constants.ERROR_CORRECT_H)
     qr.add_data(signed_qr(qrdata)); qr.make(fit=True)
     qrb=io.BytesIO()
     qr.make_image(fill_color="black",back_color="white").save(qrb,format="PNG")
     qrb.seek(0)
     qr_x=30*mm; qr_y=H-69*mm; qr_size=38*mm
     c.setFillColorRGB(1,1,1); c.rect(qr_x,qr_y,qr_size,qr_size,stroke=0,fill=1)
-    c.drawImage(ImageReader(qrb),qr_x+5*mm,qr_y+5*mm,
-                width=28*mm,height=28*mm,mask="auto")
-    c.setFillColorRGB(0,0,0)
-    c.setFont(FA_FONT,6.5)
+    c.drawImage(ImageReader(qrb),qr_x+5*mm,qr_y+5*mm,width=28*mm,height=28*mm,mask="auto")
+    c.setFillColorRGB(0,0,0); c.setFont(FA_FONT,6.5)
     c.drawCentredString(qr_x+qr_size/2,qr_y-4*mm,fa("شناسه یکتای پاسخ‌برگ"))
 
-    # Branding is visually separate from the student-information panel.
+    # Brand, exam metadata and student details are separate visual zones.
     brand_x=82*mm
-    c.setFillColorRGB(0,0,0)
-    c.setFont(FA_FONT,16)
+    c.setFillColorRGB(0,0,0); c.setFont(FA_FONT,16)
     c.drawCentredString(brand_x,H-31*mm,fa("دادیار AI"))
-    c.setFont(FA_FONT,10)
-    c.drawCentredString(brand_x,H-40*mm,fa("پاسخ‌برگ آزمون"))
-    c.setFont(FA_FONT,7)
-    c.drawCentredString(brand_x,H-49*mm,fa("سامانه هوشمند تصحیح پاسخ‌برگ"))
-    c.setFont(FA_FONT,7)
+    c.setFont(FA_FONT,10); c.drawCentredString(brand_x,H-40*mm,fa("پاسخ‌برگ آزمون"))
+    c.setFont(FA_FONT,7); c.drawCentredString(brand_x,H-49*mm,fa("سامانه هوشمند تصحیح پاسخ‌برگ"))
     c.drawCentredString(brand_x,H-61*mm,fa("آزمون: "+str(batch.exam_title or "آزمون")))
     c.drawCentredString(brand_x,H-68*mm,fa("درس: "+str(batch.subject or "................")))
 
-    # Student fields have their own panel and never repeat exam/subject branding.
     info_x=112*mm; info_y=H-72*mm; info_w=78*mm; info_h=52*mm
     c.setStrokeColorRGB(0,0,0); c.setLineWidth(.8)
     c.rect(info_x,info_y,info_w,info_h,stroke=1,fill=0)
@@ -203,43 +197,42 @@ def draw_sheet(c,batch,s):
         c.setFont(FA_FONT,6.7)
         c.drawRightString(info_x+info_w-4*mm,info_y+info_h-(16+idx*7.2)*mm,fa(label))
 
-    # Short instructions above the response area.
     c.setFont(FA_FONT,7)
     c.drawCentredString(W/2,H-82*mm,
-        fa("برای هر سؤال فقط یک حباب را کاملاً با مداد مشکی پر کنید؛ حباب‌ها را علامت نزنید."))
+        fa("برای هر سؤال فقط یک حباب را کاملاً با مداد مشکی پر کنید."))
 
-    # One stable four-option RTL column. Right-to-left order is ۱، ۲، ۳، ۴.
+    # 4 blocks × 30 rows. Block 1 (questions 1–30) is rightmost.
     row_top=H-103*mm
-    row_step=6.7*mm
-    bubble_r=3.0*mm
-    option_x=[165*mm,150*mm,135*mm,120*mm]  # 1 is rightmost, 4 is leftmost
-    question_x=185*mm
-    c.setStrokeColorRGB(0,0,0); c.setLineWidth(.75)
-    c.line(112*mm,row_top+7*mm,190*mm,row_top+7*mm)
-    c.setFont("Helvetica-Bold",8)
-    c.drawRightString(question_x,row_top+2*mm,fa("سؤال"))
-    for idx,x in enumerate(option_x,1):
-        c.drawCentredString(x,row_top+2*mm,fa_digits(idx))
-    c.setLineWidth(.35)
-    c.setStrokeColorRGB(.72,.72,.72)
-    for row in range(batch.question_count):
-        y=row_top-row*row_step
-        q=row+1
-        c.setFillColorRGB(0,0,0)
-        c.setFont("Helvetica-Bold",8)
-        c.drawRightString(question_x,y-2.5*mm,fa_digits(q))
-        for x in option_x:
-            c.setStrokeColorRGB(0,0,0); c.setLineWidth(.8)
-            c.circle(x,y,bubble_r,stroke=1,fill=0)
-        if row<batch.question_count-1:
-            c.setStrokeColorRGB(.86,.86,.86); c.setLineWidth(.25)
-            c.line(112*mm,y-3.45*mm,190*mm,y-3.45*mm)
+    row_step=4.8*mm
+    bubble_r=2.35*mm
+    question_x0=190*mm
+    block_step=43.0*mm
+    option_offsets=[9.5*mm,17.0*mm,24.5*mm,32.0*mm]
+    c.setStrokeColorRGB(0,0,0); c.setLineWidth(.7)
+    c.line(20*mm,row_top+6.5*mm,190*mm,row_top+6.5*mm)
+    for block in range(4):
+        qx=question_x0-block*block_step
+        c.setFont(FA_FONT,7)
+        c.drawRightString(qx,row_top+1.5*mm,fa("سؤال"))
+        for idx,off in enumerate(option_offsets,1):
+            c.drawCentredString(qx-off,row_top+1.5*mm,fa(fa_digits(idx)))
+        for row in range(30):
+            q=block*30+row+1
+            if q>batch.question_count: break
+            y=row_top-row*row_step
+            c.setFillColorRGB(0,0,0); c.setFont(FA_FONT,7)
+            c.drawRightString(qx,y-2.0*mm,fa(fa_digits(q)))
+            for off in option_offsets:
+                c.setStrokeColorRGB(0,0,0); c.setLineWidth(.75)
+                c.circle(qx-off,y,bubble_r,stroke=1,fill=0)
+            if row<29:
+                c.setStrokeColorRGB(.88,.88,.88); c.setLineWidth(.2)
+                c.line(qx-36*mm,y-2.45*mm,qx+1*mm,y-2.45*mm)
 
-    # Footer: simple monochrome and within print-safe margins.
     c.setStrokeColorRGB(0,0,0); c.setLineWidth(.45)
     c.line(margin+8*mm,30*mm,W-margin-8*mm,30*mm)
+    c.setFont("Helvetica",6); c.drawString(margin+8*mm,25*mm,"dadyar-ai-web.vercel.app")
     c.setFont(FA_FONT,6)
-    c.drawString(margin+8*mm,25*mm,"dadyar-ai-web.vercel.app")
     c.drawCentredString(W/2,25*mm,fa("طراحی و توسعه: رضی خادمی"))
     c.drawRightString(W-margin-8*mm,25*mm,fa("شناسه: "+qrdata["sheet_id"][:8]))
     c.drawCentredString(W/2,15*mm,fa("کاغذ A4 · چاپ ۱۰۰٪ · بدون برش اسکن شود"))
@@ -429,37 +422,38 @@ def bubble_score(gray,cx,cy,half_w,half_h):
     return float(np.mean(np.clip((baseline-inside)/max(35,baseline),0,1)))
 
 def scan_bubbles(aligned,n):
-    """Read the fixed single-column, four-choice RTL OMR grid."""
+    """Read four fixed 30-question blocks using the same RTL geometry as the PDF."""
     gray=cv2.cvtColor(aligned,cv2.COLOR_BGR2GRAY)
-    answers=[]; uncertain=[]
+    answers=[None]*n; uncertain=[]
     mm=72/25.4
     row_top=H-103*mm
-    row_step=6.7*mm
-    option_x=[165*mm,150*mm,135*mm,120*mm]
+    row_step=4.8*mm
+    question_x0=190*mm
+    block_step=43.0*mm
+    option_offsets=[9.5*mm,17.0*mm,24.5*mm,32.0*mm]
     sx=CANON_W/W; sy=CANON_H/H
+    radius=2.35*mm*sx
     for q in range(1,n+1):
-        row=q-1
+        block=(q-1)//30
+        row=(q-1)%30
+        qx=question_x0-block*block_step
         y=row_top-row*row_step
-        cy=int((H-y)*sy)
+        cy=int(round((H-y)*sy))
         scores=[]
-        for x in option_x:
-            cx=int(x*sx)
-            radius=3.0*mm*sx
+        for off in option_offsets:
+            cx=int(round((qx-off)*sx))
             scores.append(bubble_score(gray,cx,cy,radius,radius))
         order=np.argsort(scores)[::-1]
         best=float(scores[order[0]]); second=float(scores[order[1]])
-        marked=[j for j,v in enumerate(scores) if v>=.22]
+        marked=[j for j,v in enumerate(scores) if v>=.24]
         if len(marked)>1:
-            answers.append(None)
             uncertain.append({"question":q,"reason":"بیش از یک گزینه علامت خورده","scores":[round(v,3) for v in scores]})
-        elif best<.20:
-            answers.append(None)
-        elif best-second<.075:
-            answers.append(None)
+        elif best<.19:
+            answers[q-1]=None
+        elif best-second<.07:
             uncertain.append({"question":q,"reason":"علامت کم‌رنگ یا نامطمئن","scores":[round(v,3) for v in scores]})
         else:
-            # option_x is stored in RTL order: 1, 2, 3, 4.
-            answers.append(int(order[0])+1)
+            answers[q-1]=int(order[0])+1
     return answers,uncertain,None
 
 @app.post("/v1/sheets/inspect")
