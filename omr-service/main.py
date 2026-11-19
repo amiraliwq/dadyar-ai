@@ -197,8 +197,7 @@ def draw_sheet(c,batch,s):
     left,right=margin+9*mm,W-margin-9*mm
     cols=max(1,min(4,(batch.question_count+29)//30))
     colw=(right-left)/cols
-    bubble_w=6.2*mm
-    bubble_h=4.2*mm
+    bubble_r=2.6*mm
     for col in range(cols):
         x0=right-(col+1)*colw
         group_w=min(colw,36*mm)
@@ -219,8 +218,8 @@ def draw_sheet(c,batch,s):
             c.drawRightString(group_left+4*mm,y-2.2,str(q))
             for opt in range(4):
                 bx=xR-(6*mm+opt*7.3*mm)
-                c.setStrokeColorRGB(0,0,0); c.setLineWidth(.5)
-                c.roundRect(bx-bubble_w/2,y-bubble_h/2,bubble_w,bubble_h,bubble_h/2,stroke=1,fill=0)
+                c.setStrokeColorRGB(0,0,0); c.setLineWidth(.65)
+                c.circle(bx,y,bubble_r,stroke=1,fill=0)
 
     # Very light dotted column separators; outside bubble contours.
     c.saveState(); c.setStrokeColorRGB(.82,.82,.82); c.setLineWidth(.35); c.setDash(1,2)
@@ -393,20 +392,12 @@ def orient_and_align(img,detector):
     return None,None,"چهار علامت مرجع گوشه برگه پیدا نشد؛ احتمال برش صفحه، حاشیه کم اسکن یا کج‌بودن زیاد تصویر."
 
 def bubble_score(gray,cx,cy,half_w,half_h):
-    # Score the blank interior of a rounded-rectangle bubble, excluding its outline.
+    # Score the inner area of a circular OMR bubble, excluding its printed ring.
     Hh,Ww=gray.shape
     inner=np.zeros((Hh,Ww),np.uint8); outer=np.zeros((Hh,Ww),np.uint8)
-    def rounded(mask,x1,y1,x2,y2,r,value):
-        x1=max(0,int(x1)); y1=max(0,int(y1)); x2=min(Ww-1,int(x2)); y2=min(Hh-1,int(y2))
-        if x2<=x1 or y2<=y1:return
-        r=max(1,min(int(r),(x2-x1)//2,(y2-y1)//2))
-        cv2.rectangle(mask,(x1+r,y1),(x2-r,y2),value,-1)
-        cv2.rectangle(mask,(x1,y1+r),(x2,y2-r),value,-1)
-        for px in (x1+r,x2-r):
-            for py in (y1+r,y2-r):
-                cv2.circle(mask,(px,py),r,value,-1)
-    rounded(inner,cx-half_w*.62,cy-half_h*.55,cx+half_w*.62,cy+half_h*.55,max(1,half_h*.45),255)
-    rounded(outer,cx-half_w*1.8,cy-half_h*1.8,cx+half_w*1.8,cy+half_h*1.8,max(1,half_h*1.1),255)
+    radius=max(2,int(min(half_w,half_h)))
+    cv2.circle(inner,(int(cx),int(cy)),max(1,int(radius*.58)),255,-1)
+    cv2.circle(outer,(int(cx),int(cy)),max(2,int(radius*1.75)),255,-1)
     outer[inner>0]=0
     inside=gray[inner>0]; outside=gray[outer>0]
     if inside.size==0 or outside.size==0:return 0.0
@@ -436,8 +427,8 @@ def scan_bubbles(aligned,n):
         for opt in range(4):
             x=xR-(6*mm+opt*7.3*mm)
             cx=int(x*sx)
-            half_w=(6.2*mm/2)*sx
-            half_h=(4.2*mm/2)*sy
+            half_w=2.6*mm*sx
+            half_h=2.6*mm*sy
             scores.append(bubble_score(gray,cx,cy,half_w,half_h))
         order=np.argsort(scores)[::-1]; best=float(scores[order[0]]); second=float(scores[order[1]])
         marked=[j for j,v in enumerate(scores) if v>=.22]
