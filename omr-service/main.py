@@ -203,8 +203,8 @@ def draw_sheet(c,batch,s):
 
     # 4 blocks × 30 rows. Block 1 (questions 1–30) is rightmost.
     row_top=H-103*mm
-    row_step=4.8*mm
-    bubble_r=2.35*mm
+    row_step=5.0*mm
+    bubble_r=2.2*mm
     question_x0=190*mm
     block_step=43.0*mm
     option_offsets=[9.5*mm,17.0*mm,24.5*mm,32.0*mm]
@@ -432,7 +432,7 @@ def scan_bubbles(aligned,n):
     block_step=43.0*mm
     option_offsets=[9.5*mm,17.0*mm,24.5*mm,32.0*mm]
     sx=CANON_W/W; sy=CANON_H/H
-    radius=2.35*mm*sx
+    radius=2.2*mm*sx
     for q in range(1,n+1):
         block=(q-1)//30
         row=(q-1)%30
