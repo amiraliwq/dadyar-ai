@@ -427,7 +427,7 @@ def scan_bubbles(aligned,n):
     answers=[None]*n; uncertain=[]
     mm=72/25.4
     row_top=H-103*mm
-    row_step=4.8*mm
+    row_step=5.0*mm
     question_x0=190*mm
     block_step=43.0*mm
     option_offsets=[9.5*mm,17.0*mm,24.5*mm,32.0*mm]
