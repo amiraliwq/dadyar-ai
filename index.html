@@ -89,7 +89,7 @@ body{background:radial-gradient(ellipse at 8% 0%,#fff1f2 0,transparent 32%),line
   <section id="page-exams" class="page">
    <div class="content-grid">
     <div class="card panel"><h2>ایجاد آزمون و کلید پاسخ</h2><p>برای هر آزمون یک کلید پاسخ مستقل ثبت کنید.</p>
-     <form id="examForm"><div class="field"><label>عنوان آزمون</label><input id="examTitle" required placeholder="مثلاً آزمون فصل اول ریاضی"></div><div class="row-fields"><div class="field"><label>درس</label><input id="examSubject" required placeholder="ریاضی"></div><div class="field"><label>تعداد سؤال</label><input id="examCount" type="number" min="1" max="120" value="20" required></div></div><div class="row-fields"><div class="field"><label>تاریخ آزمون</label><input id="examDate" type="date"></div><div class="field"><label>ضریب نمره منفی</label><input value="۳" disabled></div></div><div class="field"><label>کلید پاسخ (شماره گزینه ۱ تا ۴، با ویرگول جدا کنید)</label><textarea id="answerKey" required placeholder="۱,۲,۳,۴,۱,۲,۳,۴"></textarea></div><div class="notice info">پاسخ سفید صفر محاسبه می‌شود. هر پاسخ غلط یک‌سوم نمره صحیح را کسر می‌کند. پاسخ چندعلامتی باید بازبینی شود.</div><button class="btn btn-primary" type="submit">ذخیره آزمون و کلید پاسخ</button></form>
+     <form id="examForm"><div class="field"><label>عنوان آزمون</label><input id="examTitle" required placeholder="مثلاً آزمون فصل اول ریاضی"></div><div class="row-fields"><div class="field"><label>درس</label><input id="examSubject" required placeholder="ریاضی"></div><div class="field"><label>تعداد سؤال</label><input id="examCount" type="number" min="1" max="120" value="20" required></div></div><div class="row-fields"><div class="field"><label>تاریخ آزمون</label><input id="examDate" type="date"></div><div class="field"><label>ضریب نمره منفی</label><input value="۳" disabled></div></div><div class="field"><label>کلید پاسخ (شماره گزینه ۱ تا ۴، با ویرگول جدا کنید)</label><textarea id="answerKey" required placeholder="۱,۲,۳,۴,۱,۲,۳,۴"></textarea></div><div class="field"><label>ورود گروهی کلید از Excel یا CSV</label><input id="answerKeyFile" type="file" accept=".xlsx,.xls,.csv"><small class="muted">فایل تک‌ستونه یا دو‌ستونه (شماره سؤال، گزینه صحیح)؛ گزینه‌ها فقط ۱ تا ۴.</small></div><div class="notice info">پاسخ سفید صفر محاسبه می‌شود. هر پاسخ غلط یک‌سوم نمره صحیح را کسر می‌کند. پاسخ چندعلامتی باید بازبینی شود.</div><button class="btn btn-primary" type="submit">ذخیره آزمون و کلید پاسخ</button></form>
     </div>
     <div class="card panel"><h2>آزمون‌های ثبت‌شده</h2><p>فهرست آزمون‌ها و تعداد سؤال‌ها</p><div id="examList" class="small muted">در حال بارگذاری…</div></div>
    </div>
@@ -112,8 +112,8 @@ body{background:radial-gradient(ellipse at 8% 0%,#fff1f2 0,transparent 32%),line
   </section>
   <section id="page-grading" class="page">
    <div class="content-grid">
-    <div class="card panel"><h2>تصحیح پاسخ‌برگ اسکن‌شده</h2><p>فایل اسکن‌شده را بارگذاری کنید تا پاسخ‌ها خوانده شوند.</p>
-     <div class="field"><label>آزمون و کلید پاسخ</label><select id="gradeExam"><option value="">انتخاب آزمون</option></select></div><div class="field"><label>فایل تصویر یا PDF</label><input id="scanFile" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"></div><div class="notice info">فرمت‌های مجاز: JPG، PNG، WebP و PDF. حداکثر حجم ۱۵ مگابایت. فایل‌های تار، برش‌خورده یا دارای سایه ممکن است به بازبینی نیاز داشته باشند.</div><button class="btn btn-primary" id="scanButton">شروع تصحیح خودکار</button><div id="scanMessage" class="small muted" style="margin-top:12px;white-space:pre-wrap"></div>
+    <div class="card panel"><h2>تصحیح پاسخ‌برگ اسکن‌شده</h2><p>عکس پاسخ‌برگ هر دانش‌آموز یا چند تصویر و PDF را هم‌زمان بارگذاری کنید؛ QR هر برگه، آن را به دانش‌آموز مربوط متصل می‌کند.</p>
+     <div class="field"><label>آزمون و کلید پاسخ</label><select id="gradeExam"><option value="">انتخاب آزمون</option></select></div><div class="field"><label>فایل تصویر یا PDF</label><input id="scanFile" type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf"></div><div class="notice info">فرمت‌های مجاز: JPG، PNG، WebP و PDF. حداکثر حجم هر فایل ۱۵ مگابایت. می‌توانید چند JPG/PNG/WebP یا PDF را با هم انتخاب کنید. تصویر هر دانش‌آموز جداگانه ذخیره می‌شود.</div><button class="btn btn-primary" id="scanButton">شروع تصحیح خودکار</button><div id="scanMessage" class="small muted" style="margin-top:12px;white-space:pre-wrap"></div>
     </div>
     <div class="card panel"><h2>قواعد تصحیح</h2><p>تنظیمات محاسبه نمره و کنترل کیفیت</p><div class="service-row"><span>تعداد گزینه‌ها</span><b>۴ گزینه (۱ تا ۴)</b></div><div class="service-row"><span>پاسخ سفید</span><b>صفر</b></div><div class="service-row"><span>ضریب نمره منفی</span><b>۳</b></div><div class="service-row"><span>پاسخ چندعلامتی</span><b>نیازمند بازبینی</b></div><div class="notice">نتیجه‌های دارای اطمینان پایین نباید خودکار نهایی شوند. ابتدا تصویر و پاسخ مشکوک بررسی شود.</div></div>
    </div>
@@ -159,9 +159,28 @@ async function loadReports(){
  reports=data||[];
  $("statGraded").textContent=faNum(reports.filter(r=>!r.review_required).length);
  $("statReview").textContent=faNum(reports.filter(r=>r.review_required).length);
- $("reportsTable").innerHTML=reports.map(r=>'<tr><td>'+esc((r.students?.first_name||"")+" "+(r.students?.last_name||""))+'</td><td>'+esc(r.students?.student_code||"")+'</td><td>'+esc(r.exams?.title||"")+'</td><td>'+faNum(r.correct_count)+'</td><td>'+faNum(r.wrong_count)+'</td><td>'+faNum(r.blank_count)+'</td><td>'+faNum(r.raw_score)+'</td><td>'+(r.review_required?'<button class="btn btn-light" data-review="'+r.id+'">بازبینی پاسخ‌ها</button>':'<span class="status">قطعی</span>')+'</td></tr>').join("")||'<tr><td colspan="8" class="empty">هنوز گزارشی ثبت نشده است.</td></tr>';
+ $("reportsTable").innerHTML=reports.map(r=>'<tr><td>'+esc((r.students?.first_name||"")+" "+(r.students?.last_name||""))+'</td><td>'+esc(r.students?.student_code||"")+'</td><td>'+esc(r.exams?.title||"")+'</td><td>'+faNum(r.correct_count)+'</td><td>'+faNum(r.wrong_count)+'</td><td>'+faNum(r.blank_count)+'</td><td>'+faNum(r.raw_score)+'</td><td>'+(r.source_file_path?'<button class="btn btn-outline" data-image="'+r.id+'">مشاهده تصویر</button>':'<span class="muted">ثبت نشده</span>')+'</td><td>'+(r.review_required?'<button class="btn btn-light" data-review="'+r.id+'">بازبینی پاسخ‌ها</button>':'<span class="status">قطعی</span>')+'</td></tr>').join("")||'<tr><td colspan="9" class="empty">هنوز گزارشی ثبت نشده است.</td></tr>';
  document.querySelectorAll("[data-review]").forEach(b=>b.onclick=()=>reviewSubmission(b.dataset.review));
+ document.querySelectorAll("[data-image]").forEach(b=>b.onclick=async()=>{const row=reports.find(x=>x.id===b.dataset.image);if(!row?.source_file_path)return;const {data,error}=await sb.storage.from("answer-sheets").createSignedUrl(row.source_file_path,300);if(error){toast("دریافت تصویر ممکن نشد: "+error.message);return}window.open(data.signedUrl,"_blank","noopener");});
 }
+$("answerKeyFile").onchange=async e=>{
+ const file=e.target.files?.[0];if(!file)return;
+ try{
+  const wb=XLSX.read(await file.arrayBuffer(),{type:"array"});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:""});
+  const norm=v=>String(v??"").trim().replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d));
+  const nonempty=rows.filter(r=>r.some(v=>String(v??"").trim()!==""));
+  let values=[];
+  const twoCol=nonempty.length>0&&nonempty.every(r=>r.length>=2&&/^\d+$/.test(norm(r[0]))&&/^[1-4]$/.test(norm(r[1])));
+  if(twoCol)values=nonempty.sort((a,b)=>Number(norm(a[0]))-Number(norm(b[0]))).map(r=>Number(norm(r[1])));
+  else values=nonempty.flatMap(r=>r).map(norm).filter(v=>/^[1-4]$/.test(v)).map(Number);
+  if(!values.length||values.length>120)throw new Error("تعداد پاسخ معتبر باید بین ۱ تا ۱۲۰ باشد.");
+  $("answerKey").value=values.join(",");$("examCount").value=values.length;
+  toast("کلید "+faNum(values.length)+" سؤال از فایل وارد شد.");
+ }catch(err){toast("خواندن فایل کلید ناموفق بود: "+err.message);}
+ e.target.value="";
+};
 $("examForm").onsubmit=async e=>{e.preventDefault();if(!profile)return;const count=Number($("examCount").value),answers=$("answerKey").value.split(/[,\s،]+/).filter(Boolean).map(Number);if(answers.length!==count||answers.some(x=>![1,2,3,4].includes(x))){toast("تعداد پاسخ‌های کلید باید دقیقاً برابر تعداد سؤال‌ها و هر پاسخ بین ۱ تا ۴ باشد.");return}const {data:exam,error}=await sb.from("exams").insert({institution_id:profile.institution_id,title:$("examTitle").value.trim(),subject:$("examSubject").value.trim(),exam_date:$("examDate").value||null,question_count:count,negative_coefficient:3}).select().single();if(error){toast(error.message);return}const {error:ke}=await sb.from("answer_keys").insert({exam_id:exam.id,answers});if(ke){toast(ke.message);return}e.target.reset();$("examCount").value=20;toast("آزمون و کلید پاسخ ذخیره شد.");await loadExams()};
 $("classForm").onsubmit=async e=>{e.preventDefault();const {error}=await sb.from("classes").insert({institution_id:profile.institution_id,title:$("classTitle").value.trim(),grade:$("classGrade").value.trim()||null});if(error){toast(error.message);return}e.target.reset();toast("کلاس اضافه شد.");await loadClasses()};
 $("studentForm").onsubmit=async e=>{e.preventDefault();const class_id=$("studentClass").value;if(!class_id){toast("ابتدا کلاس را انتخاب کنید.");return}const {error}=await sb.from("students").insert({institution_id:profile.institution_id,class_id,student_code:$("studentCode").value.trim(),first_name:$("studentFirst").value.trim(),last_name:$("studentLast").value.trim()});if(error){toast(error.message);return}e.target.reset();toast("دانش‌آموز ثبت شد.");await loadStudents()};
@@ -171,17 +190,56 @@ $("saveOmr").onclick=()=>{const u=$("omrUrl").value.trim().replace(/\/+$/,"");if
 async function testOmr(show=true){const u=$("omrUrl").value.trim().replace(/\/+$/,"");if(!u){setStatus("omrStatus","تنظیم نشده","off");setStatus("qrStatus","غیرفعال","off");if(show)$("omrTest").textContent="نشانی سرویس ثبت نشده است.";return false}try{const r=await fetch(u+"/health",{cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status);const d=await r.json();if(!d.database_configured||!d.qr_configured)throw new Error("سرویس پاسخ می‌دهد، اما تنظیم Supabase یا کلید امن QR ناقص است.");setStatus("omrStatus","متصل · "+(d.version||"OK"),"ok");setStatus("qrStatus","آماده تولید","ok");if(show)$("omrTest").textContent="اتصال و تنظیمات امنیتی سرویس موفق است: "+u;return true}catch(e){setStatus("omrStatus","عدم دسترسی","off");setStatus("qrStatus","غیرفعال","off");if(show)$("omrTest").textContent="اتصال برقرار نشد: "+e.message;return false}}
 $("testOmr").onclick=()=>testOmr(true);
 $("generateSheets").onclick=async()=>{const url=$("omrUrl").value.trim().replace(/\/+$/,""),exam=exams.find(x=>x.id===$("sheetExam").value);const {data:{session}}=await sb.auth.getSession();if(!session)throw new Error("نشست کاربری منقضی شده است.");if(!url||!exam){toast("سرویس OMR و آزمون را مشخص کنید.");return}let list=students;if($("sheetClass").value)list=list.filter(s=>s.class_id===$("sheetClass").value);if(!list.length){toast("برای این انتخاب دانش‌آموزی وجود ندارد.");return}const btn=$("generateSheets");btn.disabled=true;$("sheetMessage").textContent="در حال تولید پاسخ‌برگ‌ها…";try{const r=await fetch(url+"/v1/sheets/generate",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+session.access_token},body:JSON.stringify({exam_id:exam.id,exam_title:exam.title,subject:exam.subject||"",school_name:institution.name,site_name:institution.site_name||"دادیار AI",question_count:exam.question_count,students:list.map(s=>({student_id:s.id,name:s.first_name+" "+s.last_name,code:s.student_code}))})});if(!r.ok)throw new Error(await r.text());const blob=await r.blob(),a=document.createElement("a"),u=URL.createObjectURL(blob);a.href=u;a.download="dadyar-answer-sheets.pdf";a.click();URL.revokeObjectURL(u);$("sheetMessage").textContent="PDF با "+faNum(list.length)+" پاسخ‌برگ ساخته شد."}catch(e){let message=e.message||"خطای نامشخص";try{const parsed=JSON.parse(message);message=parsed.detail||parsed.message||message}catch{}$("sheetMessage").textContent="خطا در تولید پاسخ‌برگ: "+message;toast("تولید پاسخ‌برگ انجام نشد: "+message)}finally{btn.disabled=false}};
-$("scanButton").onclick=async()=>{const url=$("omrUrl").value.trim().replace(/\/+$/,""),file=$("scanFile").files[0],exam=exams.find(x=>x.id===$("gradeExam").value);if(!url||!file||!exam){toast("سرویس، آزمون و فایل اسکن را انتخاب کنید.");return}if(file.size>15*1024*1024){toast("حداکثر حجم فایل ۱۵ مگابایت است.");return}const ak=exam.answer_keys;const key=Array.isArray(ak)?ak[0]?.answers:ak?.answers;if(!key){toast("کلید پاسخ این آزمون پیدا نشد.");return}const {data:{session}}=await sb.auth.getSession();if(!session){toast("نشست کاربری منقضی شده است.");return}const fd=new FormData();fd.append("file",file);const btn=$("scanButton");btn.disabled=true;$("scanMessage").textContent="در حال تحلیل برگه‌ها…";try{const r=await fetch(url+"/v1/sheets/inspect",{method:"POST",headers:{"Authorization":"Bearer "+session.access_token},body:fd});if(!r.ok)throw new Error(await r.text());const result=await r.json(),lines=[];
-const validPages=(result.pages||[]).filter(p=>p.student&&typeof p.score==="number"&&p.student.exam_id===exam.id&&students.some(s=>s.id===p.student.student_id));
-let sourcePath=null;
-if(validPages.length){
- const safeName=file.name.replace(/[^a-zA-Z0-9._-]+/g,"_");
- sourcePath=profile.institution_id+"/scans/"+exam.id+"/"+Date.now()+"-"+safeName;
- const {error:uploadError}=await sb.storage.from("answer-sheets").upload(sourcePath,file,{upsert:false,contentType:file.type});
- if(uploadError)throw uploadError;
-}
-for(const p of result.pages||[]){if(!p.student||typeof p.score!=="number"||p.student.exam_id!==exam.id){lines.push("صفحه "+p.page+": "+(p.reason||"QR یا شناسه آزمون قابل تأیید نیست؛ ذخیره نشد."));continue}const st=students.find(s=>s.id===p.student.student_id);if(!st){lines.push("صفحه "+p.page+": دانش‌آموز در فهرست مدرسه پیدا نشد؛ ذخیره نشد.");continue}const {error}=await sb.from("submissions").upsert({institution_id:profile.institution_id,exam_id:exam.id,student_id:st.id,sheet_code:p.student.sheet_id||p.student.student_code,answers:p.answers||[],correct_count:p.correct,wrong_count:p.wrong,blank_count:p.blank,raw_score:p.score,review_required:(p.status!=="processed")||(p.unresolved||0)>0,unresolved_count:p.unresolved||0,uncertain_answers:p.uncertain||[],source_file_name:file.name,source_file_path:sourcePath},{onConflict:"exam_id,student_id"});if(error)throw error;lines.push(st.first_name+" "+st.last_name+": صحیح "+p.correct+"، غلط "+p.wrong+"، سفید "+p.blank+"، نمره "+p.score+((p.status!=="processed"||(p.unresolved||0)>0)?" · نیازمند بازبینی":" · ثبت قطعی"))}await loadReports();const done=(result.pages||[]).filter(p=>p.status==="processed").length,review=(result.pages||[]).filter(p=>p.status==="review_required").length;
-$("scanMessage").textContent="خلاصه پردازش: "+faNum(done)+" صفحه پردازش‌شده · "+faNum(review)+" صفحه نیازمند بازبینی.\n\n"+lines.join("\n")+(result.warning?"\n\n"+result.warning:"");toast("پردازش فایل پایان یافت")}catch(e){$("scanMessage").textContent="خطا در تصحیح: "+e.message}finally{btn.disabled=false}};
+$("scanButton").onclick=async()=>{
+ const url=$("omrUrl").value.trim().replace(/\/+$/,""),files=Array.from($("scanFile").files||[]),exam=exams.find(x=>x.id===$("gradeExam").value);
+ if(!url||!files.length||!exam){toast("سرویس، آزمون و حداقل یک فایل را انتخاب کنید.");return}
+ if(files.some(f=>f.size>15*1024*1024)){toast("حجم هر فایل باید حداکثر ۱۵ مگابایت باشد.");return}
+ const ak=exam.answer_keys,key=Array.isArray(ak)?ak[0]?.answers:ak?.answers;
+ if(!key){toast("کلید پاسخ این آزمون پیدا نشد.");return}
+ const {data:{session}}=await sb.auth.getSession();if(!session){toast("نشست کاربری منقضی شده است.");return}
+ const btn=$("scanButton");btn.disabled=true;const lines=[];let done=0,review=0,failed=0;
+ $("scanMessage").textContent="در حال پردازش "+faNum(files.length)+" فایل…";
+ try{
+  for(let fi=0;fi<files.length;fi++){
+   const file=files[fi];
+   try{
+    const fd=new FormData();fd.append("file",file);
+    const r=await fetch(url+"/v1/sheets/inspect",{method:"POST",headers:{"Authorization":"Bearer "+session.access_token},body:fd});
+    if(!r.ok)throw new Error(await r.text());
+    const result=await r.json();
+    const validPages=(result.pages||[]).filter(p=>p.student&&typeof p.score==="number"&&p.student.exam_id===exam.id&&students.some(st=>st.id===p.student.student_id));
+    let sourcePath=null;
+    if(validPages.length){
+     const safeName=file.name.replace(/[^a-zA-Z0-9._-]+/g,"_");
+     sourcePath=profile.institution_id+"/scans/"+exam.id+"/"+Date.now()+"-"+fi+"-"+safeName;
+     const {error:uploadError}=await sb.storage.from("answer-sheets").upload(sourcePath,file,{upsert:false,contentType:file.type||"application/octet-stream"});
+     if(uploadError)throw uploadError;
+    }
+    for(const p of result.pages||[]){
+     if(!p.student||typeof p.score!=="number"||p.student.exam_id!==exam.id){lines.push(file.name+" · صفحه "+p.page+": "+(p.reason||"QR یا آزمون قابل تأیید نیست؛ ذخیره نشد."));review++;continue}
+     const st=students.find(x=>x.id===p.student.student_id);
+     if(!st){lines.push(file.name+" · صفحه "+p.page+": دانش‌آموز پیدا نشد؛ ذخیره نشد.");review++;continue}
+     const {error}=await sb.from("submissions").upsert({
+      institution_id:profile.institution_id,exam_id:exam.id,student_id:st.id,
+      sheet_code:p.student.sheet_id||p.student.student_code,answers:p.answers||[],
+      correct_count:p.correct,wrong_count:p.wrong,blank_count:p.blank,raw_score:p.score,
+      review_required:(p.status!=="processed")||(p.unresolved||0)>0,
+      unresolved_count:p.unresolved||0,uncertain_answers:p.uncertain||[],
+      source_file_name:file.name,source_file_path:sourcePath
+     },{onConflict:"exam_id,student_id"});
+     if(error)throw error;
+     if(p.status==="processed"&&!(p.unresolved||0))done++;else review++;
+     lines.push(st.first_name+" "+st.last_name+" · "+file.name+": صحیح "+p.correct+"، غلط "+p.wrong+"، سفید "+p.blank+"، نمره "+p.score+((p.status!=="processed"||(p.unresolved||0)>0)?" · نیازمند بازبینی":" · ثبت قطعی"));
+    }
+    if(!(result.pages||[]).length){failed++;lines.push(file.name+": هیچ صفحه‌ای از فایل پردازش نشد.");}
+   }catch(err){failed++;lines.push(file.name+": خطا — "+err.message);}
+   $("scanMessage").textContent="پیشرفت: "+faNum(fi+1)+" از "+faNum(files.length)+" فایل\n"+lines.join("\n");
+  }
+  await loadReports();
+  $("scanMessage").textContent="خلاصه پردازش: "+faNum(done)+" صفحه پردازش‌شده · "+faNum(review)+" صفحه نیازمند بازبینی · "+faNum(failed)+" فایل ناموفق.\n\n"+lines.join("\n");
+  toast("پردازش گروهی پایان یافت");
+ }finally{btn.disabled=false}
+};
 
 async function reviewSubmission(id){
  const r=reports.find(x=>x.id===id);if(!r)return;
