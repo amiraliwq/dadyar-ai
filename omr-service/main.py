@@ -23,7 +23,10 @@ W,H=A4
 LIMIT=15*1024*1024
 CANON_W,CANON_H=2480,3508
 app=FastAPI(title="Dadyar AI OMR",version="0.5.0")
-app.add_middleware(CORSMiddleware,allow_origins=[x.strip() for x in os.getenv("CORS_ORIGINS","http://localhost:3000").split(",") if x.strip()],allow_credentials=False,allow_methods=["GET","POST"],allow_headers=["*"])
+# Allow the production Vercel frontends plus explicitly configured origins.
+_ALLOWED_ORIGINS={x.strip().rstrip("/") for x in os.getenv("CORS_ORIGINS","").split(",") if x.strip()}
+_ALLOWED_ORIGINS.update({"https://dadyar-ai-web.vercel.app","https://dadyar-ai.vercel.app","http://localhost:3000"})
+app.add_middleware(CORSMiddleware,allow_origins=sorted(_ALLOWED_ORIGINS),allow_credentials=False,allow_methods=["*"],allow_headers=["*"])
 
 FONT_PATH=os.getenv("DADYAR_FONT","/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")
 try:
@@ -321,15 +324,15 @@ def find_fiducials(img):
     points=[]
     mm=72/25.4
     marker=10*mm
-    center=25*mm
+    center_offset=25*mm
     expected_size_x=marker/W*w
     expected_size_y=marker/H*h
     for zx,zy in zones:
-        tx=(center/W*w) if zx==0 else (w-center/W*w)
-        ty=(center/H*h) if zy==0 else (h-center/H*h)
+        tx=(center_offset/W*w) if zx==0 else (w-center_offset/W*w)
+        ty=(center_offset/H*h) if zy==0 else (h-center_offset/H*h)
         pool=[]
-        for area,center,bw,bh in candidates:
-            x,y=center
+        for area,contour_center,bw,bh in candidates:
+            x,y=contour_center
             if not ((x<w*.18) if zx==0 else (x>w*.82)): continue
             if not ((y<h*.18) if zy==0 else (y>h*.82)): continue
             # Match the printed square's expected physical size and corner offset.
@@ -337,13 +340,13 @@ def find_fiducials(img):
             if abs(bh-expected_size_y)/max(1,expected_size_y)>.60: continue
             contour_match=abs(x-tx)/max(1,w)+abs(y-ty)/max(1,h)
             if contour_match>.12: continue
-            pool.append((contour_match,center))
+            pool.append((contour_match,contour_center))
         if not pool: return None
         points.append(min(pool,key=lambda p:p[0])[1])
     src=np.array(points,dtype=np.float32)
     # Registration-mark centers are 25 mm from each A4 edge.
-    center=25*72/25.4
-    dx=center/W*CANON_W; dy=center/H*CANON_H
+    center_offset=25*72/25.4
+    dx=center_offset/W*CANON_W; dy=center_offset/H*CANON_H
     dst=np.array([[dx,dy],[CANON_W-dx,dy],[CANON_W-dx,CANON_H-dy],[dx,CANON_H-dy]],dtype=np.float32)
     M=cv2.getPerspectiveTransform(src,dst)
     return cv2.warpPerspective(img,M,(CANON_W,CANON_H),flags=cv2.INTER_CUBIC)
@@ -444,7 +447,12 @@ async def inspect(file:UploadFile=File(...),user=Depends(verify_user),credential
         raise HTTPException(503,"کلید امن QR روی سرویس تنظیم نشده است.")
     results=[]; detector=cv2.QRCodeDetector()
     for i,img in enumerate(decode_pdf_or_image(data,file.content_type),1):
-        aligned,qr=orient_and_align(img,detector)
+        try:
+            aligned,qr=orient_and_align(img,detector)
+        except Exception as exc:
+            print(f"OMR alignment failed on page {i}: {type(exc).__name__}: {exc}")
+            results.append({"page":i,"status":"review_required","reason":"خطای داخلی هنگام تحلیل تصویر؛ لطفاً فایل را دوباره اسکن کنید یا این صفحه را بازبینی کنید."})
+            continue
         if aligned is None:
             results.append({"page":i,"status":"review_required","reason":"علامت‌های مرجع یا QR در جهت معتبر پیدا نشد؛ احتمال چرخش، برش یا کیفیت پایین تصویر."}); continue
         student_qr=verify_qr(qr) if qr else None
