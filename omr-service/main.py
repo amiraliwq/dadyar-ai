@@ -311,51 +311,68 @@ def decode_pdf_or_image(data,ctype):
     return [img]
 
 def find_fiducials(img):
+    """Robustly detect four printed corner registration marks across old/new sheet revisions."""
     gray=cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-    th=cv2.threshold(gray,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)[1]
-    contours,_=cv2.findContours(th,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
-    h,w=gray.shape; candidates=[]
-    for cnt in contours:
-        area=cv2.contourArea(cnt)
-        if area < w*h*0.000035: continue
-        x,y,bw,bh=cv2.boundingRect(cnt)
-        ratio=bw/max(1,bh)
-        if .72<=ratio<=1.28 and area/(bw*bh)>.68:
-            candidates.append((area,(x+bw/2,y+bh/2),bw,bh))
-    if len(candidates)<4: return None
-    # Match the four printed registration squares by their expected normalized
-    # corner positions and approximate physical size. Do not simply choose the
-    # largest dark square: QR finder patterns also look like square contours.
-    zones=[(0,0),(1,0),(1,1),(0,1)] # TL,TR,BR,BL
-    points=[]
+    h,w=gray.shape
     mm=72/25.4
-    marker=10*mm
-    center_offset=25*mm
-    expected_size_x=marker/W*w
-    expected_size_y=marker/H*h
+    expected_mm=25*mm
+    # Otsu and adaptive threshold handle clean PDFs, phone photos and uneven lighting.
+    masks=[
+        cv2.threshold(gray,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)[1],
+        cv2.adaptiveThreshold(gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                              cv2.THRESH_BINARY_INV,41,11)
+    ]
+    candidates=[]
+    min_area=w*h*0.000008
+    max_area=w*h*0.012
+    for th in masks:
+        contours,_=cv2.findContours(th,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
+        for cnt in contours:
+            area=cv2.contourArea(cnt)
+            if area<min_area or area>max_area: continue
+            x,y,bw,bh=cv2.boundingRect(cnt)
+            ratio=bw/max(1,bh)
+            fill=area/max(1,bw*bh)
+            if not .72<=ratio<=1.28 or fill<.62: continue
+            # Ignore tiny QR finder patterns and very large page graphics.
+            size_mm=(bw/w)*(W/mm)
+            if not 3.0<=size_mm<=16.0: continue
+            cx=x+bw/2; cy=y+bh/2
+            item=(area,(cx,cy),bw,bh)
+            if not any(abs(cx-p[1][0])<3 and abs(cy-p[1][1])<3 for p in candidates):
+                candidates.append(item)
+    if len(candidates)<4: return None
+
+    # Four corner zones; permit older 5–6 mm marks and camera crop/scale variation.
+    # Score by proximity to expected 25 mm centers, while preferring solid, larger marks.
+    zones=[(0,0),(1,0),(1,1),(0,1)] # TL, TR, BR, BL
+    points=[]
     for zx,zy in zones:
-        tx=(center_offset/W*w) if zx==0 else (w-center_offset/W*w)
-        ty=(center_offset/H*h) if zy==0 else (h-center_offset/H*h)
+        tx=(expected_mm/W*w) if zx==0 else (w-expected_mm/W*w)
+        ty=(expected_mm/H*h) if zy==0 else (h-expected_mm/H*h)
         pool=[]
-        for area,contour_center,bw,bh in candidates:
-            x,y=contour_center
-            if not ((x<w*.18) if zx==0 else (x>w*.82)): continue
-            if not ((y<h*.18) if zy==0 else (y>h*.82)): continue
-            # Match the printed square's expected physical size and corner offset.
-            if abs(bw-expected_size_x)/max(1,expected_size_x)>.60: continue
-            if abs(bh-expected_size_y)/max(1,expected_size_y)>.60: continue
-            contour_match=abs(x-tx)/max(1,w)+abs(y-ty)/max(1,h)
-            if contour_match>.12: continue
-            pool.append((contour_match,contour_center))
+        for area,center,bw,bh in candidates:
+            x,y=center
+            if not ((x<w*.24) if zx==0 else (x>w*.76)): continue
+            if not ((y<h*.24) if zy==0 else (y>h*.76)): continue
+            # Flexible positional tolerance for earlier PDFs and camera perspective.
+            dist=((x-tx)/w)**2+((y-ty)/h)**2
+            if dist>.035: continue
+            size_penalty=abs((bw/w)-(bh/h))
+            score=dist+size_penalty*.15- min(area/(w*h),.01)*.02
+            pool.append((score,center))
         if not pool: return None
         points.append(min(pool,key=lambda p:p[0])[1])
+
     src=np.array(points,dtype=np.float32)
-    # Registration-mark centers are 25 mm from each A4 edge.
+    # Normalize to the current A4 scanner coordinate system.
     center_offset=25*72/25.4
     dx=center_offset/W*CANON_W; dy=center_offset/H*CANON_H
-    dst=np.array([[dx,dy],[CANON_W-dx,dy],[CANON_W-dx,CANON_H-dy],[dx,CANON_H-dy]],dtype=np.float32)
+    dst=np.array([[dx,dy],[CANON_W-dx,dy],
+                  [CANON_W-dx,CANON_H-dy],[dx,CANON_H-dy]],dtype=np.float32)
     M=cv2.getPerspectiveTransform(src,dst)
-    return cv2.warpPerspective(img,M,(CANON_W,CANON_H),flags=cv2.INTER_CUBIC)
+    aligned=cv2.warpPerspective(img,M,(CANON_W,CANON_H),flags=cv2.INTER_CUBIC)
+    return aligned
 
 def orient_and_align(img,detector):
     """Deskew a sheet and decode its QR with several contrast-safe fallbacks."""
