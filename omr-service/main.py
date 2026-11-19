@@ -166,11 +166,11 @@ def draw_sheet(c,batch,s):
     qr=qrcode.QRCode(box_size=5,border=0,error_correction=qrcode.constants.ERROR_CORRECT_M)
     qr.add_data(signed_qr(qrdata)); qr.make(fit=True)
     qrb=io.BytesIO(); qr.make_image(fill_color="black",back_color="white").save(qrb,format="PNG"); qrb.seek(0)
-    quiet_x=margin+11*mm
-    quiet_y=H-margin-42*mm
-    quiet_size=40*mm
+    quiet_x=margin+10*mm
+    quiet_y=H-margin-46*mm
+    quiet_size=46*mm
     c.setFillColorRGB(1,1,1); c.rect(quiet_x,quiet_y,quiet_size,quiet_size,stroke=0,fill=1)
-    c.drawImage(ImageReader(qrb),quiet_x+10*mm,quiet_y+10*mm,width=20*mm,height=20*mm,mask="auto")
+    c.drawImage(ImageReader(qrb),quiet_x+11*mm,quiet_y+11*mm,width=24*mm,height=24*mm,mask="auto")
     c.setFillColorRGB(0,0,0)
     txt(c,quiet_x+quiet_size,quiet_y-3*mm,"شناسه اختصاصی",6)
 
@@ -197,8 +197,8 @@ def draw_sheet(c,batch,s):
     left,right=margin+9*mm,W-margin-9*mm
     cols=max(1,min(4,(batch.question_count+29)//30))
     colw=(right-left)/cols
-    bubble_w=5.6*mm
-    bubble_h=3.5*mm
+    bubble_w=6.2*mm
+    bubble_h=4.2*mm
     for col in range(cols):
         x0=right-(col+1)*colw
         group_w=min(colw,36*mm)
@@ -352,14 +352,10 @@ def find_fiducials(img):
     return cv2.warpPerspective(img,M,(CANON_W,CANON_H),flags=cv2.INTER_CUBIC)
 
 def orient_and_align(img,detector):
-    # Normalize portrait orientation and resolve 180-degree scans by locating
-    # the signed QR in its expected upper-left area after perspective correction.
-    rotations=[
-        img,
-        cv2.rotate(img,cv2.ROTATE_90_CLOCKWISE),
-        cv2.rotate(img,cv2.ROTATE_180),
-        cv2.rotate(img,cv2.ROTATE_90_COUNTERCLOCKWISE),
-    ]
+    """Deskew a sheet and decode its QR with several contrast-safe fallbacks."""
+    rotations=[img,cv2.rotate(img,cv2.ROTATE_90_CLOCKWISE),
+               cv2.rotate(img,cv2.ROTATE_180),cv2.rotate(img,cv2.ROTATE_90_COUNTERCLOCKWISE)]
+    marker_found=False
     for candidate in rotations:
         h,w=candidate.shape[:2]
         if w>=h:
@@ -367,14 +363,34 @@ def orient_and_align(img,detector):
         aligned=find_fiducials(candidate)
         if aligned is None:
             continue
-        raw,points,_=detector.detectAndDecode(aligned)
-        if not raw or points is None:
-            continue
-        pts=np.asarray(points,dtype=np.float32).reshape(-1,2)
-        cx,cy=pts.mean(axis=0)
-        if cx < CANON_W*.30 and cy < CANON_H*.25:
-            return aligned,raw
-    return None,None
+        marker_found=True
+        gray=cv2.cvtColor(aligned,cv2.COLOR_BGR2GRAY)
+        clahe=cv2.createCLAHE(clipLimit=2.0,tileGridSize=(8,8)).apply(gray)
+        variants=[aligned,gray,clahe,
+                  cv2.threshold(clahe,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1],
+                  cv2.adaptiveThreshold(clahe,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                        cv2.THRESH_BINARY,31,9)]
+        for variant in variants:
+            try:
+                raw,points,_=detector.detectAndDecode(variant)
+                if raw and points is not None:
+                    pts=np.asarray(points,dtype=np.float32).reshape(-1,2)
+                    cx,cy=pts.mean(axis=0)
+                    if cx<CANON_W*.34 and cy<CANON_H*.28:
+                        return aligned,raw,None
+            except Exception:
+                pass
+        crop=clahe[:int(CANON_H*.30),:int(CANON_W*.36)]
+        crop=cv2.resize(crop,None,fx=1.7,fy=1.7,interpolation=cv2.INTER_CUBIC)
+        try:
+            raw,_,_=detector.detectAndDecode(crop)
+            if raw:
+                return aligned,raw,None
+        except Exception:
+            pass
+    if marker_found:
+        return None,None,"QR اختصاصی خوانده نشد؛ وضوح تصویر یا کنتراست QR کافی نیست. فایل PDF اصلی را مستقیم بارگذاری کنید یا با کیفیت ۳۰۰ DPI اسکن بگیرید."
+    return None,None,"چهار علامت مرجع گوشه برگه پیدا نشد؛ احتمال برش صفحه، حاشیه کم اسکن یا کج‌بودن زیاد تصویر."
 
 def bubble_score(gray,cx,cy,half_w,half_h):
     # Score the blank interior of a rounded-rectangle bubble, excluding its outline.
@@ -420,8 +436,8 @@ def scan_bubbles(aligned,n):
         for opt in range(4):
             x=xR-(6*mm+opt*7.3*mm)
             cx=int(x*sx)
-            half_w=(5.6*mm/2)*sx
-            half_h=(3.5*mm/2)*sy
+            half_w=(6.2*mm/2)*sx
+            half_h=(4.2*mm/2)*sy
             scores.append(bubble_score(gray,cx,cy,half_w,half_h))
         order=np.argsort(scores)[::-1]; best=float(scores[order[0]]); second=float(scores[order[1]])
         marked=[j for j,v in enumerate(scores) if v>=.22]
@@ -448,13 +464,13 @@ async def inspect(file:UploadFile=File(...),user=Depends(verify_user),credential
     results=[]; detector=cv2.QRCodeDetector()
     for i,img in enumerate(decode_pdf_or_image(data,file.content_type),1):
         try:
-            aligned,qr=orient_and_align(img,detector)
+            aligned,qr,align_error=orient_and_align(img,detector)
         except Exception as exc:
             print(f"OMR alignment failed on page {i}: {type(exc).__name__}: {exc}")
             results.append({"page":i,"status":"review_required","reason":"خطای داخلی هنگام تحلیل تصویر؛ لطفاً فایل را دوباره اسکن کنید یا این صفحه را بازبینی کنید."})
             continue
         if aligned is None:
-            results.append({"page":i,"status":"review_required","reason":"علامت‌های مرجع یا QR در جهت معتبر پیدا نشد؛ احتمال چرخش، برش یا کیفیت پایین تصویر."}); continue
+            results.append({"page":i,"status":"review_required","reason":align_error or "برگه قابل هم‌ترازی نیست."}); continue
         student_qr=verify_qr(qr) if qr else None
         if not student_qr:
             results.append({"page":i,"status":"review_required","reason":"QR اختصاصی معتبر پیدا نشد."}); continue
