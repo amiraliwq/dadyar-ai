@@ -54,7 +54,7 @@ def draw_sheet(c,batch,student):
     c.setFont(FONT,10); c.drawCentredString(W/2,H-25*mm,fa(batch.exam_title or "پاسخ‌برگ آزمون"))
     c.setFont(FONT,7); c.drawCentredString(W/2,H-30*mm,fa("پاسخ‌برگ هوشمند دادیار"))
     # Student identity panel
-    ix,iy,iw,ih=17*mm,H-69*mm,130*mm,32*mm
+    ix,iy,iw,ih=55*mm,H-69*mm,138*mm,32*mm
     c.setLineWidth(.8); c.rect(ix,iy,iw,ih,stroke=1,fill=0)
     c.setFont(FONT,8); c.drawRightString(ix+iw-4*mm,iy+ih-6*mm,fa("مشخصات دانش‌آموز"))
     c.setFont(FONT,7)
@@ -62,7 +62,7 @@ def draw_sheet(c,batch,student):
     c.drawRightString(ix+iw-4*mm,iy+ih-20*mm,fa("کد دانش‌آموزی: "+str(student.code)))
     c.drawRightString(ix+iw-4*mm,iy+ih-27*mm,fa("کلاس: ........................   تاریخ: ........................"))
     # QR and unique code area
-    qx,qy,qs=154*mm,H-67*mm,29*mm
+    qx,qy,qs=18*mm,H-67*mm,29*mm
     c.rect(qx-2*mm,qy-2*mm,qs+4*mm,qs+8*mm,stroke=1,fill=0)
     c.drawImage(ImageReader(qrb),qx,qy,width=qs,height=qs,mask="auto")
     c.setFont(FONT,5.5); c.drawCentredString(qx+qs/2,qy-5*mm,fa("کد یکتای برگه"))
