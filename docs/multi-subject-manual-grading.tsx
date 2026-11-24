@@ -119,10 +119,9 @@ export function calculateWeightedExamScore(
     };
   });
   const overall = summarize(Array.from({ length: answerKey.length }, (_, i) => i + 1));
-  const weighted = subjects.filter(s => s.effectiveQuestions > 0);
-  const weightTotal = weighted.reduce((sum, s) => sum + s.weight, 0);
+  const weightTotal = subjects.reduce((sum, s) => sum + s.weight, 0);
   const weightedPercentage = weightTotal
-    ? Number((weighted.reduce((sum, s) => sum + s.percentage * s.weight, 0) / weightTotal).toFixed(2))
+    ? Number((subjects.reduce((sum, s) => sum + s.percentage * s.weight, 0) / weightTotal).toFixed(2))
     : 0;
   return { ...overall, subjects, weightedPercentage };
 }
