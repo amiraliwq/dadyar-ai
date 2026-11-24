@@ -288,10 +288,13 @@ $("answerKeyFile").onchange=async e=>{
 function addExamSectionRow(values={}){
  const host=$("examSectionsEditor");if(!host)return;
  const rows=[...host.querySelectorAll(".exam-section-row")];
- const previous=rows.length?Number(rows[rows.length-1].querySelector('[data-section-end]').value||0):0;
  const total=Number($("examCount").value||20);
- const start=values.start??(previous+1);
- const end=values.end??(rows.length?total:Math.min(total,15));
+ let start=values.start??1,end=values.end??total;
+ if(rows.length&&!values.start&&!values.end){
+  const last=rows[rows.length-1],lastStart=Number(last.querySelector("[data-section-start]").value),lastEnd=Number(last.querySelector("[data-section-end]").value);
+  if(lastEnd-lastStart>=1){const split=Math.floor((lastStart+lastEnd)/2);last.querySelector("[data-section-end]").value=split;start=split+1;end=lastEnd;}
+  else{start=lastEnd+1;end=total;}
+ }
  const row=document.createElement("div");row.className="exam-section-row";
  row.innerHTML='<div class="field"><label>نام درس</label><input data-section-subject required value="'+esc(values.subject||"")+'" placeholder="مثلاً ریاضی"></div><div class="field"><label>مبحث / فصل (اختیاری)</label><input data-section-lesson value="'+esc(values.lesson||"")+'" placeholder="فصل اول"></div><div class="field"><label>از سؤال</label><input data-section-start type="number" min="1" value="'+start+'"></div><div class="field"><label>تا سؤال</label><input data-section-end type="number" min="1" value="'+end+'"></div><div class="field"><label>ضریب درس</label><input data-section-weight type="number" min=".001" step=".001" value="'+(values.weight??1)+'"></div><button type="button" class="remove-section" aria-label="حذف درس">×</button>';
  row.querySelector(".remove-section").onclick=()=>{if(host.children.length===1){toast("حداقل یک درس باید باقی بماند.");return}row.remove();renumberExamSections()};
@@ -339,7 +342,7 @@ async function saveExamSections(exam,sections){
  const {error}=await sb.from("exam_sections").insert(payload);if(error)throw error;
 }
 $("addExamSection").onclick=()=>addExamSectionRow();
-$("examCount").addEventListener("change",()=>{const rows=[...$("examSectionsEditor").querySelectorAll(".exam-section-row")];if(rows.length===1){rows[0].querySelector("[data-section-end]").value=$("examCount").value}});
+$("examCount").addEventListener("change",()=>{const rows=[...$("examSectionsEditor").querySelectorAll(".exam-section-row")];if(rows.length){rows[rows.length-1].querySelector("[data-section-end]").value=$("examCount").value}});
 addExamSectionRow({subject:"",start:1,end:20,weight:1});
 $("examForm").onsubmit=async e=>{
  e.preventDefault();if(!profile)return;
