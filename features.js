@@ -20,10 +20,10 @@
   $("subjectList").querySelectorAll("[data-del-sub]").forEach(b=>b.onclick=async()=>{if(confirm("درس حذف شود؟")){const r=await sb.from("subjects").delete().eq("id",b.dataset.delSub);if(r.error)alert(r.error.message);loadCatalog()}});
   $("subjectList").querySelectorAll("[data-edit-les]").forEach(b=>b.onclick=async()=>{const l=lessons.find(x=>x.id===b.dataset.editLes),v=prompt("نام مبحث",l.name);if(v?.trim()){await sb.from("lessons").update({name:v.trim()}).eq("id",l.id);loadCatalog()}});
   $("subjectList").querySelectorAll("[data-del-les]").forEach(b=>b.onclick=async()=>{await sb.from("lessons").delete().eq("id",b.dataset.delLes);loadCatalog()});
-  $("subjectList").querySelectorAll("form[data-add-les]").forEach(f=>f.onsubmit=async e=>{e.preventDefault();const r=await sb.from("lessons").insert({institution_id:profile.institution_id,subject_id:f.dataset.addLes,name:f.name.value.trim(),sort_order:lessons.filter(x=>x.subject_id===f.dataset.addLes).length});if(r.error)alert(r.error.message);loadCatalog()});
+  $("subjectList").querySelectorAll("form[data-add-les]").forEach(f=>f.onsubmit=async e=>{e.preventDefault();const r=await sb.from("lessons").insert({institution_id:profile.institution_id,subject_id:f.dataset.addLes,name:f.querySelector('input').value.trim(),sort_order:lessons.filter(x=>x.subject_id===f.dataset.addLes).length});if(r.error)alert(r.error.message);loadCatalog()});
   const sel=$("sectionExam"),old=sel.value;sel.innerHTML='<option value="">انتخاب آزمون</option>'+((window.dadyarWorkspace?.exams)||[]).map(e=>'<option value="'+e.id+'">'+e.title+'</option>').join("");sel.value=old;
  }
- $("subjectForm").onsubmit=async e=>{e.preventDefault();const {sb,profile}=api();if(!sb||!profile)return;const {error}=await sb.from("subjects").insert({institution_id:profile.institution_id,name:e.target.name.value.trim(),sort_order:$("subjectList").children.length});if(error)alert(error.message);else{e.target.reset();loadCatalog()}};
+ $("subjectForm").onsubmit=async e=>{e.preventDefault();const {sb,profile}=api();if(!sb||!profile)return;const {error}=await sb.from("subjects").insert({institution_id:profile.institution_id,name:e.target.querySelector('input').value.trim(),sort_order:$("subjectList").children.length});if(error)alert(error.message);else{e.target.reset();loadCatalog()}};
  $("refreshSubjects").onclick=loadCatalog;
  $("manualKeyBuild").onclick=()=>{
   const n=Math.max(1,Math.min(300,Number($("examCount").value)||1)),a=$("answerKey").value.split(/[,،\s]+/).filter(Boolean);
