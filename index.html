@@ -34,6 +34,28 @@ body{background:radial-gradient(ellipse at 8% 0%,#fff1f2 0,transparent 32%),line
 .sheet-hero-mark{width:58px;height:58px;flex:0 0 58px;border:1px solid #ffffff44;border-radius:17px;background:#ffffff16;display:grid;place-items:center;font-size:26px}
 #sheetMessage{white-space:pre-wrap;line-height:2;overflow-wrap:anywhere}
 @media(max-width:700px){.topbar{padding:13px;border-radius:14px}.sheet-hero{padding:17px}.sheet-hero h2{font-size:15px}.sheet-hero-mark{width:46px;height:46px;flex-basis:46px}}
+
+/* Answer-sheet workflow: responsive RTL, high-contrast print preview */
+.sheet-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:0 0 16px}
+.sheet-step{display:flex;align-items:center;gap:9px;padding:11px 13px;border:1px solid var(--line);border-radius:12px;background:#fff;color:#718096;font-size:11px}
+.sheet-step b{display:grid;place-items:center;width:27px;height:27px;border-radius:9px;background:#f0f2f6;color:#475467}
+.sheet-step.active{border-color:#e7b7bd;background:#fff9fa;color:#a91e2e}.sheet-step.active b{background:#c92d3c;color:#fff}
+.sheet-workspace{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(300px,.9fr);gap:16px;align-items:start}
+.sheet-form-column{display:grid;gap:14px;min-width:0}.sheet-panel{padding:20px}.sheet-panel-head{margin-bottom:16px}.sheet-panel-head h2{margin:5px 0 3px;font-size:15px}.sheet-panel-head p{margin:0;color:var(--muted);font-size:11px;line-height:1.8}.step-kicker{font-size:10px;color:var(--red);font-weight:800}
+.sheet-meta{padding:10px 12px;background:#f7f8fa;border:1px solid #e8ebf0;border-radius:10px;font-size:11px;line-height:1.9}
+.sheet-selection-tools{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:5px 0 10px;font-size:11px;font-weight:700}.sheet-selection-tools>div{display:flex;gap:6px;flex-wrap:wrap}.sheet-selection-tools .btn{padding:7px 10px;font-size:10px}
+.sheet-student-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;max-height:220px;overflow:auto;padding:2px}
+.sheet-student-option{display:flex;align-items:center;gap:8px;padding:9px;border:1px solid var(--line);border-radius:10px;font-size:11px;min-width:0}.sheet-student-option input{accent-color:var(--red);width:17px;height:17px;flex:0 0 auto}.sheet-student-option span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sheet-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0}.sheet-summary>div{padding:10px;border:1px solid var(--line);border-radius:10px;background:#fafbfc;font-size:10px;color:var(--muted)}.sheet-summary b{display:block;color:var(--ink);font-size:12px;margin-top:5px}
+.sheet-generate{width:100%;min-height:46px;margin-top:13px}.sheet-preview-card{position:sticky;top:14px;overflow:hidden}.sheet-preview-wrap{padding:12px;background:#f0f2f5}.sheet-preview{position:relative;aspect-ratio:210/297;width:100%;background:#fff;border:1px solid #d8dde5;box-shadow:0 8px 24px #17203312;padding:8% 7%;color:#111;overflow:hidden;font-family:Vazirmatn,Tahoma,sans-serif}
+.reg{position:absolute;width:13px;height:13px;border:2px solid #111;border-radius:50%;background:#fff}.reg:after{content:"";position:absolute;inset:3px;background:#111;border-radius:50%}.reg.tl{top:3%;right:4%}.reg.tr{top:3%;left:4%}.reg.bl{bottom:3%;right:4%}.reg.br{bottom:3%;left:4%}
+.preview-heading{text-align:center;display:grid;gap:3px;padding:3% 0 2%;border-bottom:1px solid #111}.preview-heading b{font-size:clamp(8px,1.5vw,12px)}.preview-heading strong{font-size:clamp(7px,1.25vw,10px)}.preview-heading small{font-size:clamp(6px,1vw,8px)}
+.preview-identity{display:grid;grid-template-columns:1fr 22%;gap:4%;align-items:center;padding:4% 0}.preview-identity>div:first-child{border:1px solid #111;padding:4%;display:grid;gap:6px;min-height:54px}.preview-identity b{font-size:clamp(6px,1vw,8px)}.preview-identity span{font-size:clamp(5px,.9vw,7px)}.preview-qr{aspect-ratio:1;border:1px solid #111;display:grid;place-content:center;text-align:center;font-size:clamp(5px,.9vw,7px);font-weight:700}
+.preview-instruction{border:1px solid #111;padding:2%;text-align:center;font-size:clamp(5px,.9vw,7px);margin-bottom:4%}.preview-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2%;direction:rtl;height:58%;overflow:hidden}.preview-col{display:grid;align-content:start;gap:3px;border-left:1px solid #aaa;padding-left:3%}.preview-q{display:flex;align-items:center;justify-content:space-between;gap:2px;font-size:clamp(4px,.75vw,6px);color:#111}.preview-bubbles{display:flex;gap:2px}.preview-bubbles i{width:5px;height:5px;border:1px solid #111;border-radius:50%;display:block}.preview-footer{position:absolute;bottom:3.5%;left:7%;right:7%;border-top:1px solid #111;padding-top:2%;text-align:center;font-size:clamp(5px,.8vw,7px)}
+.sheet-preview-note{padding:12px 15px;color:var(--muted);font-size:10px;line-height:1.9}
+@media(max-width:1050px){.sheet-workspace{grid-template-columns:1fr}.sheet-preview-card{position:static}.sheet-preview{max-width:460px;margin:auto}}
+@media(max-width:700px){.sheet-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.sheet-step{padding:9px;font-size:10px}.sheet-student-list{grid-template-columns:1fr}.sheet-panel{padding:15px}.sheet-preview-wrap{padding:9px}.sheet-preview{max-width:390px}.sheet-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
 </style>
 </head>
 <body>
@@ -102,12 +124,41 @@ body{background:radial-gradient(ellipse at 8% 0%,#fff1f2 0,transparent 32%),line
    </div>
   </section>
   <section id="page-sheets" class="page">
-   <div class="sheet-hero"><div><h2>پاسخ‌برگ هوشمند دادیار</h2><p>تولید PDF اختصاصی برای هر دانش‌آموز، QR امضاشده و صفحه‌بندی A4 هماهنگ با موتور تصحیح</p></div><div class="sheet-hero-mark">▧</div></div>
-   <div class="content-grid">
-    <div class="card panel"><h2>تولید پاسخ‌برگ اختصاصی</h2><p>برای هر دانش‌آموز QR امضاشده و شناسه یکتا ساخته می‌شود.</p>
-     <div class="field"><label>آزمون</label><select id="sheetExam"><option value="">انتخاب آزمون</option></select></div><div class="field"><label>کلاس</label><select id="sheetClass"><option value="">همه کلاس‌ها</option></select></div><div class="field"><label>تعداد ستون‌های پاسخ‌برگ</label><select id="sheetColumns"><option value="2">۲ ستون</option><option value="3">۳ ستون</option><option value="4">۴ ستون</option><option value="5">۵ ستون</option><option value="6" selected>۶ ستون</option></select></div><div class="notice info">قالب A4 با نشانگرهای هدف‌گیری، کد QR مستقل، پنل راهنما، نوار کالیبراسیون و ستون‌های راست‌به‌چپ. هر ستون حداکثر ۵۰ سؤال دارد.</div><button class="btn btn-primary" id="generateSheets">▧　تولید و دانلود PDF پاسخ‌برگ‌ها</button><div id="sheetMessage" class="small muted" style="margin-top:12px"></div>
+   <div class="sheet-hero"><div><h2>پاسخ‌برگ هوشمند دادیار</h2><p>ساخت پاسخ‌برگ اختصاصی، QR امضاشده و PDF استاندارد A4؛ تنظیمات چاپ با موتور OMR هماهنگ است.</p></div><div class="sheet-hero-mark">▧</div></div>
+   <div class="sheet-steps" aria-label="مراحل ساخت پاسخ‌برگ"><div class="sheet-step active"><b>۱</b><span>آزمون</span></div><div class="sheet-step"><b>۲</b><span>کلاس و دانش‌آموز</span></div><div class="sheet-step"><b>۳</b><span>قالب برگه</span></div><div class="sheet-step"><b>۴</b><span>بازبینی و تولید</span></div></div>
+   <div class="sheet-workspace">
+    <div class="sheet-form-column">
+     <div class="card panel sheet-panel"><div class="sheet-panel-head"><span class="step-kicker">مرحله ۱</span><h2>انتخاب آزمون</h2><p>آزمون ثبت‌شده و کلید پاسخ آن را انتخاب کنید.</p></div>
+      <div class="field"><label for="sheetExam">آزمون</label><select id="sheetExam"><option value="">انتخاب آزمون</option></select></div>
+      <div id="sheetExamMeta" class="sheet-meta muted">پس از انتخاب آزمون، تعداد سؤال و وضعیت کلید نمایش داده می‌شود.</div>
+     </div>
+     <div class="card panel sheet-panel"><div class="sheet-panel-head"><span class="step-kicker">مرحله ۲</span><h2>کلاس و دانش‌آموزان</h2><p>یک کلاس انتخاب کنید و دریافت‌کنندگان پاسخ‌برگ را مشخص کنید.</p></div>
+      <div class="field"><label for="sheetClass">کلاس</label><select id="sheetClass"><option value="">همه کلاس‌ها</option></select></div>
+      <div class="sheet-selection-tools"><span id="sheetStudentCount">۰ دانش‌آموز انتخاب شده</span><div><button type="button" class="btn btn-light" id="sheetSelectAll">انتخاب همه</button><button type="button" class="btn btn-outline" id="sheetClearAll">پاک‌کردن انتخاب</button></div></div>
+      <div id="sheetStudentList" class="sheet-student-list"><div class="empty">ابتدا کلاس را انتخاب کنید.</div></div>
+     </div>
+     <div class="card panel sheet-panel"><div class="sheet-panel-head"><span class="step-kicker">مرحله ۳</span><h2>تنظیم قالب چاپ</h2><p>تعداد ستون‌ها را متناسب با تعداد سؤال‌ها انتخاب کنید.</p></div>
+      <div class="field"><label for="sheetColumns">تعداد ستون‌های پاسخ</label><select id="sheetColumns"><option value="2">۲ ستون</option><option value="3">۳ ستون</option><option value="4">۴ ستون</option><option value="5">۵ ستون</option><option value="6" selected>۶ ستون</option></select></div>
+      <div id="sheetLayoutMeta" class="sheet-meta">قالب A4 · چاپ در مقیاس ۱۰۰٪ · حداکثر ۵۰ سؤال در هر ستون</div>
+      <div class="notice info">ترتیب گزینه‌ها در هر ستون از راست به چپ است. حباب‌ها خالی‌اند و کلید پاسخ روی برگه دانش‌آموز چاپ نمی‌شود.</div>
+     </div>
+     <div class="card panel sheet-panel"><div class="sheet-panel-head"><span class="step-kicker">مرحله ۴</span><h2>بازبینی و تولید PDF</h2><p>پیش از تولید، آزمون، کلاس و تعداد برگه‌ها را کنترل کنید.</p></div>
+      <div id="sheetSummary" class="sheet-summary"><div>آزمون <b>انتخاب نشده</b></div><div>کلاس <b>همه کلاس‌ها</b></div><div>دانش‌آموز <b>۰ نفر</b></div><div>تعداد سؤال <b>—</b></div></div>
+      <div class="sheet-prechecks"><div class="service-row"><span>آزمون و کلید پاسخ</span><b id="preExam">بررسی نشده</b></div><div class="service-row"><span>دانش‌آموزان انتخاب‌شده</span><b id="preStudents">بررسی نشده</b></div><div class="service-row"><span>سرویس OMR</span><b id="preService">بررسی نشده</b></div></div>
+      <button class="btn btn-primary sheet-generate" id="generateSheets">▧　تولید و دانلود PDF پاسخ‌برگ‌ها</button><div id="sheetMessage" class="small muted" style="margin-top:12px" role="status" aria-live="polite"></div>
+     </div>
     </div>
-    <div class="card panel"><h2>پیش‌نیازهای تولید</h2><p>برای ساخت پاسخ‌برگ باید این موارد آماده باشد.</p><div class="service-row"><span>آزمون و کلید پاسخ</span><b id="preExam">بررسی نشده</b></div><div class="service-row"><span>دانش‌آموزان کلاس</span><b id="preStudents">بررسی نشده</b></div><div class="service-row"><span>سرویس OMR</span><b id="preService">تنظیم نشده</b></div><div class="notice">هر QR شامل شناسه آزمون، دانش‌آموز و برگه است و باید در موتور تصحیح با امضای معتبر بررسی شود.</div></div>
+    <aside class="card sheet-preview-card"><div class="section-head"><div><h2>پیش‌نمایش پاسخ‌برگ</h2><p>نمای ساختاری A4 · بدون اطلاعات ساختگی</p></div><span class="status">A4</span></div>
+     <div class="sheet-preview-wrap"><div class="sheet-preview" aria-label="پیش‌نمایش ساختاری پاسخ‌برگ">
+      <i class="reg tl"></i><i class="reg tr"></i><i class="reg bl"></i><i class="reg br"></i>
+      <div class="preview-heading"><b id="previewSchool">نام مدرسه</b><strong id="previewExam">عنوان آزمون</strong><small>پاسخ‌برگ هوشمند دادیار</small></div>
+      <div class="preview-identity"><div><b>مشخصات دانش‌آموز</b><span id="previewStudent">پس از انتخاب دانش‌آموز نمایش داده می‌شود</span><span id="previewCode">کد دانش‌آموزی: —</span></div><div class="preview-qr">QR اختصاصی<br/>در PDF</div></div>
+      <div class="preview-instruction">برای هر سؤال فقط یک حباب را کاملاً پر کنید.</div>
+      <div class="preview-grid" id="previewGrid"></div>
+      <div class="preview-footer">A4 · چاپ ۱۰۰٪ · تمام نشانگرها در اسکن دیده شوند</div>
+     </div></div>
+     <div class="sheet-preview-note">این پیش‌نمایش فقط ساختار صفحه را نشان می‌دهد؛ QR واقعی و داده دانش‌آموز هنگام تولید PDF در سرویس امن ساخته می‌شود.</div>
+    </aside>
    </div>
   </section>
   <section id="page-grading" class="page">
@@ -149,7 +200,7 @@ $("logoutBtn").onclick=async()=>{if(sb)await sb.auth.signOut()};
 async function enterApp(){showApp();$("userLabel").textContent=user.user_metadata?.full_name||user.email||"مدیر";$("userInitial").textContent=($("userLabel").textContent[0]||"م");await loadProfile();if(profile){await loadAll()}else{showOnboarding()}}
 async function loadProfile(){const {data,error}=await sb.from("profiles").select("*,institutions(*)").eq("user_id",user.id).maybeSingle();if(error){toast("خطا در دریافت پروفایل: "+error.message);return}profile=data;institution=data?.institutions||null}
 function showOnboarding(){const root=$("modalRoot");root.innerHTML='<div class="modal-backdrop"><div class="modal"><div class="modal-head"><h2>راه‌اندازی فضای مدرسه</h2></div><p class="muted small">برای شروع، نام مدرسه یا آموزشگاه خود را ثبت کنید.</p><form id="onboardForm"><div class="field"><label>نام مدرسه / آموزشگاه</label><input id="onboardName" required></div><div class="field"><label>وب‌سایت (اختیاری)</label><input id="onboardWebsite"></div><button class="btn btn-primary">ساخت فضای کاری</button></form></div></div>'; $("onboardForm").onsubmit=async e=>{e.preventDefault();const {data:inst,error:ie}=await sb.from("institutions").insert({name:$("onboardName").value.trim(),website:$("onboardWebsite").value.trim()||null,owner_id:user.id}).select().single();if(ie){toast(ie.message);return}const {error:pe}=await sb.from("profiles").insert({user_id:user.id,institution_id:inst.id,role:"owner",full_name:user.user_metadata?.full_name||user.email});if(pe){toast(pe.message);return}root.innerHTML="";await loadProfile();await loadAll()}}
-async function loadAll(){if(!profile){showOnboarding();return}$("schoolPill").textContent=institution?.name||"مدرسه";$("schoolName").value=institution?.name||"";$("siteName").value=institution?.site_name||"دادیار AI";$("siteUrl").value=institution?.website||"";$("schoolLogo").value=institution?.logo_url||"";$("omrUrl").value=cfg.omrApiUrl||localStorage.getItem("dadyar_omr_url")||"";await Promise.all([loadClasses(),loadStudents(),loadExams(),loadReports()]);setStatus("dbStatus","متصل","ok");testOmr(false)}
+async function loadAll(){if(!profile){showOnboarding();return}$("schoolPill").textContent=institution?.name||"مدرسه";$("schoolName").value=institution?.name||"";$("siteName").value=institution?.site_name||"دادیار AI";$("siteUrl").value=institution?.website||"";$("schoolLogo").value=institution?.logo_url||"";$("omrUrl").value=cfg.omrApiUrl||localStorage.getItem("dadyar_omr_url")||"";await Promise.all([loadClasses(),loadStudents(),loadExams(),loadReports()]);setStatus("dbStatus","متصل","ok");testOmr(false);renderSheetRoster(true);updateSheetSummary()}
 async function loadClasses(){const {data,error}=await sb.from("classes").select("*").order("created_at",{ascending:false});if(error){toast(error.message);return}classes=data||[];const opts='<option value="">انتخاب کلاس</option>'+classes.map(c=>'<option value="'+c.id+'">'+esc(c.title)+'</option>').join("");$("studentClass").innerHTML=opts;$("sheetClass").innerHTML='<option value="">همه کلاس‌ها</option>'+classes.map(c=>'<option value="'+c.id+'">'+esc(c.title)+'</option>').join("")}
 async function loadStudents(){const {data,error}=await sb.from("students").select("*,classes(title)").order("last_name");if(error){toast(error.message);return}students=data||[];$("statStudents").textContent=faNum(students.length);$("studentsTable").innerHTML=students.map(s=>'<tr><td>'+esc(s.first_name+" "+s.last_name)+'</td><td>'+esc(s.student_code)+'</td><td>'+esc(s.classes?.title||"—")+'</td></tr>').join("")||'<tr><td colspan="3" class="empty">هنوز دانش‌آموزی ثبت نشده است.</td></tr>'}
 async function loadExams(){const {data,error}=await sb.from("exams").select("*,answer_keys(answers)").order("created_at",{ascending:false});if(error){toast(error.message);return}exams=data||[];$("statExams").textContent=faNum(exams.length);$("examList").innerHTML=exams.map(e=>'<div class="service-row"><span>'+esc(e.title)+'<small class="muted"> · '+esc(e.subject||"")+'</small></span><b>'+faNum(e.question_count)+' سؤال</b></div>').join("")||'<div class="empty">آزمونی ثبت نشده است.</div>';$("recentExams").innerHTML=exams.slice(0,5).map(e=>'<tr><td>'+esc(e.title)+'</td><td>'+faNum(e.question_count)+'</td><td>'+esc(e.exam_date||"—")+'</td><td><span class="status">ثبت‌شده</span></td></tr>').join("")||'<tr><td colspan="4" class="empty">هنوز آزمونی ثبت نشده است.</td></tr>';const o='<option value="">انتخاب آزمون</option>'+exams.map(e=>'<option value="'+e.id+'">'+esc(e.title)+'</option>').join("");$("sheetExam").innerHTML=o;$("gradeExam").innerHTML=o}
@@ -194,7 +245,51 @@ $("settingsForm").onsubmit=async e=>{e.preventDefault();const {error}=await sb.f
 $("saveOmr").onclick=()=>{const u=$("omrUrl").value.trim().replace(/\/+$/,"");if(u&&!/^https:\/\//.test(u)){toast("نشانی سرویس باید با https:// شروع شود.");return}localStorage.setItem("dadyar_omr_url",u);toast("نشانی سرویس در این مرورگر ذخیره شد.");testOmr(false)};
 async function testOmr(show=true){const u=$("omrUrl").value.trim().replace(/\/+$/,"");if(!u){setStatus("omrStatus","تنظیم نشده","off");setStatus("qrStatus","غیرفعال","off");if(show)$("omrTest").textContent="نشانی سرویس ثبت نشده است.";return false}try{const r=await fetch(u+"/health",{cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status);const d=await r.json();if(!d.database_configured||!d.qr_configured)throw new Error("سرویس پاسخ می‌دهد، اما تنظیم Supabase یا کلید امن QR ناقص است.");setStatus("omrStatus","متصل · "+(d.version||"OK"),"ok");setStatus("qrStatus","آماده تولید","ok");if(show)$("omrTest").textContent="اتصال و تنظیمات امنیتی سرویس موفق است: "+u;return true}catch(e){setStatus("omrStatus","عدم دسترسی","off");setStatus("qrStatus","غیرفعال","off");if(show)$("omrTest").textContent="اتصال برقرار نشد: "+e.message;return false}}
 $("testOmr").onclick=()=>testOmr(true);
-$("generateSheets").onclick=async()=>{const url=$("omrUrl").value.trim().replace(/\/+$/,""),exam=exams.find(x=>x.id===$("sheetExam").value);const {data:{session}}=await sb.auth.getSession();if(!session)throw new Error("نشست کاربری منقضی شده است.");if(!url||!exam){toast("سرویس OMR و آزمون را مشخص کنید.");return}let list=students;if($("sheetClass").value)list=list.filter(s=>s.class_id===$("sheetClass").value);if(!list.length){toast("برای این انتخاب دانش‌آموزی وجود ندارد.");return}const btn=$("generateSheets");btn.disabled=true;$("sheetMessage").textContent="در حال تولید پاسخ‌برگ‌ها…";try{const r=await fetch(url+"/v1/sheets/generate",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+session.access_token},body:JSON.stringify({exam_id:exam.id,exam_title:exam.title,subject:exam.subject||"",school_name:institution.name,site_name:institution.site_name||"دادیار AI",question_count:exam.question_count,columns:Number($("sheetColumns")?.value||6),students:list.map(s=>({student_id:s.id,name:s.first_name+" "+s.last_name,code:s.student_code}))})});if(!r.ok)throw new Error(await r.text());const blob=await r.blob(),a=document.createElement("a"),u=URL.createObjectURL(blob);a.href=u;a.download="dadyar-answer-sheets.pdf";a.click();URL.revokeObjectURL(u);$("sheetMessage").textContent="PDF با "+faNum(list.length)+" پاسخ‌برگ ساخته شد."}catch(e){let message=e.message||"خطای نامشخص";try{const parsed=JSON.parse(message);message=parsed.detail||parsed.message||message}catch{}$("sheetMessage").textContent="خطا در تولید پاسخ‌برگ: "+message;toast("تولید پاسخ‌برگ انجام نشد: "+message)}finally{btn.disabled=false}};
+$("generateSheets").onclick=async()=>{const url=$("omrUrl").value.trim().replace(/\/+$/,""),exam=exams.find(x=>x.id===$("sheetExam").value);const {data:{session}}=await sb.auth.getSession();if(!session)throw new Error("نشست کاربری منقضی شده است.");if(!url||!exam){toast("سرویس OMR و آزمون را مشخص کنید.");return}let list=sheetRoster().filter(s=>selectedSheetStudents.has(s.id));if(!list.length){toast("حداقل یک دانش‌آموز را انتخاب کنید.");return}const btn=$("generateSheets");btn.disabled=true;$("sheetMessage").textContent="در حال تولید پاسخ‌برگ‌ها…";try{const r=await fetch(url+"/v1/sheets/generate",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+session.access_token},body:JSON.stringify({exam_id:exam.id,exam_title:exam.title,subject:exam.subject||"",school_name:institution.name,site_name:institution.site_name||"دادیار AI",question_count:exam.question_count,columns:Number($("sheetColumns")?.value||6),students:list.map(s=>({student_id:s.id,name:s.first_name+" "+s.last_name,code:s.student_code}))})});if(!r.ok)throw new Error(await r.text());const blob=await r.blob(),a=document.createElement("a"),u=URL.createObjectURL(blob);a.href=u;a.download="dadyar-answer-sheets.pdf";a.click();URL.revokeObjectURL(u);$("sheetMessage").textContent="PDF با "+faNum(list.length)+" پاسخ‌برگ ساخته شد."}catch(e){let message=e.message||"خطای نامشخص";try{const parsed=JSON.parse(message);message=parsed.detail||parsed.message||message}catch{}$("sheetMessage").textContent="خطا در تولید پاسخ‌برگ: "+message;toast("تولید پاسخ‌برگ انجام نشد: "+message)}finally{btn.disabled=false}};
+
+/* Answer-sheet wizard state: selection is explicit and never silently changes the class list. */
+const selectedSheetStudents=new Set();
+function sheetRoster(){
+ const classId=$("sheetClass").value;
+ return classId?students.filter(s=>s.class_id===classId):students;
+}
+function renderSheetRoster(reset=false){
+ const roster=sheetRoster();
+ if(reset){selectedSheetStudents.clear();roster.forEach(s=>selectedSheetStudents.add(s.id));}
+ for(const id of Array.from(selectedSheetStudents)){if(!roster.some(s=>s.id===id))selectedSheetStudents.delete(id);}
+ $("sheetStudentList").innerHTML=roster.length?roster.map(s=>'<label class="sheet-student-option"><input type="checkbox" data-sheet-student="'+s.id+'" '+(selectedSheetStudents.has(s.id)?"checked":"")+'><span>'+esc(s.first_name+" "+s.last_name)+" · "+esc(s.student_code||"بدون کد")+'</span></label>').join(""):'<div class="empty">دانش‌آموزی در این انتخاب وجود ندارد.</div>';
+ $("sheetStudentList").querySelectorAll("[data-sheet-student]").forEach(c=>c.onchange=()=>{c.checked?selectedSheetStudents.add(c.dataset.sheetStudent):selectedSheetStudents.delete(c.dataset.sheetStudent);updateSheetSummary()});
+ updateSheetSummary();
+}
+function updateSheetSummary(){
+ const exam=exams.find(e=>e.id===$("sheetExam").value),roster=sheetRoster(),chosen=roster.filter(s=>selectedSheetStudents.has(s.id));
+ const key=exam?.answer_keys,answers=Array.isArray(key)?key[0]?.answers:key?.answers;
+ const service=!!$("omrUrl").value.trim();
+ $("sheetStudentCount").textContent=faNum(chosen.length)+" دانش‌آموز انتخاب شده";
+ $("sheetExamMeta").textContent=exam?("تعداد سؤال: "+faNum(exam.question_count)+" · "+(Array.isArray(answers)&&answers.length===exam.question_count?"کلید پاسخ ثبت شده":"کلید پاسخ موجود یا کامل نیست")):"پس از انتخاب آزمون، تعداد سؤال و وضعیت کلید نمایش داده می‌شود.";
+ const cols=Number($("sheetColumns").value||6),count=Number(exam?.question_count||0),per=Math.ceil(count/cols);
+ $("sheetLayoutMeta").textContent="A4 · "+faNum(cols)+" ستون · حدود "+faNum(per)+" سؤال در هر ستون · حداکثر ۵۰ سؤال در هر ستون";
+ $("sheetSummary").innerHTML='<div>آزمون<b>'+esc(exam?.title||"انتخاب نشده")+'</b></div><div>کلاس<b>'+esc($("sheetClass").selectedOptions[0]?.textContent||"همه کلاس‌ها")+'</b></div><div>دانش‌آموز<b>'+faNum(chosen.length)+" نفر"+'</b></div><div>تعداد سؤال<b>'+faNum(count||0)+'</b></div>';
+ const readyExam=!!exam&&Array.isArray(answers)&&answers.length===count&&answers.every(v=>[1,2,3,4].includes(Number(v)));
+ $("preExam").textContent=readyExam?"آماده":"نیازمند بررسی";
+ $("preStudents").textContent=chosen.length&&chosen.every(s=>String(s.student_code||"").trim())?"آماده":(chosen.length?"کد دانش‌آموزی ناقص":"انتخاب نشده");
+ $("preService").textContent=service?"نشانی ثبت شده":"تنظیم نشده";
+ $("generateSheets").disabled=!(readyExam&&chosen.length&&chosen.every(s=>String(s.student_code||"").trim())&&service);
+ $("previewSchool").textContent=institution?.name||"نام مدرسه";
+ $("previewExam").textContent=exam?.title||"عنوان آزمون";
+ const first=chosen[0];$("previewStudent").textContent=first?("نام: "+first.first_name+" "+first.last_name):"نام: پس از انتخاب دانش‌آموز";
+ $("previewCode").textContent="کد دانش‌آموزی: "+(first?.student_code||"—");
+ const grid=$("previewGrid"),n=Math.min(count||24,120),colCount=Math.max(2,Math.min(6,cols)),rows=Math.ceil(n/colCount);
+ grid.style.gridTemplateColumns="repeat("+colCount+",minmax(0,1fr))";
+ grid.innerHTML=Array.from({length:colCount},(_,col)=>'<div class="preview-col">'+Array.from({length:rows},(_,row)=>{const q=col*rows+row+1;return q<=n?'<div class="preview-q"><span>'+faNum(q)+'</span><span class="preview-bubbles"><i></i><i></i><i></i><i></i></span></div>':""}).join("")+'</div>').join("");
+ document.querySelectorAll(".sheet-step").forEach((el,i)=>el.classList.toggle("active",i===(exam?(!chosen.length?1:readyExam?3:0):0)));
+}
+$("sheetClass").addEventListener("change",()=>renderSheetRoster(true));
+$("sheetExam").addEventListener("change",updateSheetSummary);
+$("sheetColumns").addEventListener("change",updateSheetSummary);
+$("sheetSelectAll").onclick=()=>{sheetRoster().forEach(s=>selectedSheetStudents.add(s.id));renderSheetRoster()};
+$("sheetClearAll").onclick=()=>{selectedSheetStudents.clear();renderSheetRoster()};
+
 $("scanButton").onclick=async()=>{
  const url=$("omrUrl").value.trim().replace(/\/+$/,""),files=Array.from($("scanFile").files||[]),exam=exams.find(x=>x.id===$("gradeExam").value);
  if(!url||!files.length||!exam){toast("سرویس، آزمون و حداقل یک فایل را انتخاب کنید.");return}
