@@ -14,6 +14,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
+from omr_layout import draw_sheet as draw_sheet_mod
 
 SECRET=os.getenv("DADYAR_QR_SECRET","CHANGE-ME-BEFORE-PRODUCTION")
 SUPABASE_URL=os.getenv("SUPABASE_URL","").rstrip("/")
@@ -58,7 +59,8 @@ class Batch(BaseModel):
     subject:str="ریاضی"
     school_name:str="ایران زمین"
     site_name:str="دادیار AI"
-    question_count:int=Field(ge=1,le=120)
+    question_count:int=Field(ge=1,le=300)
+    columns:int=Field(default=6,ge=1,le=6)
     students:List[Student]
 class ReportRow(BaseModel):
     student:str
@@ -146,7 +148,7 @@ def fa_digits(value):
 def fa_digits(value):
     return str(value).translate(str.maketrans("0123456789","۰۱۲۳۴۵۶۷۸۹"))
 
-def draw_sheet(c,batch,s):
+def draw_sheet_legacy(c,batch,s)
     """Production A4 OMR: four fixed 30-question blocks, RTL options, signed QR."""
     mm=72/25.4
     margin=20*mm
@@ -238,6 +240,8 @@ def draw_sheet(c,batch,s):
     c.drawCentredString(W/2,15*mm,fa("کاغذ A4 · چاپ ۱۰۰٪ · بدون برش اسکن شود"))
     return qrdata
 
+draw_sheet=draw_sheet_mod
+
 @app.get("/")
 def root():
     return {"service":"Dadyar AI OMR","status":"ok","health":"/health","docs":"/docs"}
@@ -255,6 +259,8 @@ async def generate_sheets(batch:Batch,user=Depends(verify_user),credentials:HTTP
     exam=await exam_context(batch.exam_id,token)
     if not exam:
         raise HTTPException(404,"آزمون در فضای مدرسه فعلی پیدا نشد.")
+    if batch.question_count>batch.columns*50:
+        raise HTTPException(400,"تعداد سؤال‌ها از ظرفیت ستون‌های انتخاب‌شده بیشتر است.")
     if int(exam.get("question_count") or 0)!=batch.question_count:
         raise HTTPException(409,"تعداد سؤال‌های درخواستی با آزمون ثبت‌شده یکسان نیست.")
     answer_key=await exam_answer_key(batch.exam_id,token)
