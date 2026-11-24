@@ -427,21 +427,23 @@ def bubble_score(gray,cx,cy,half_w,half_h):
     baseline=float(np.median(outside))
     return float(np.mean(np.clip((baseline-inside)/max(35,baseline),0,1)))
 
-def scan_bubbles(aligned,n):
+def scan_bubbles(aligned,n,columns=6):
     """Read four fixed 30-question blocks using the same RTL geometry as the PDF."""
     gray=cv2.cvtColor(aligned,cv2.COLOR_BGR2GRAY)
     answers=[None]*n; uncertain=[]
     mm=72/25.4
-    row_top=H-103*mm
-    row_step=5.0*mm
+    columns=max(1,min(6,int(columns or 6)))
+    rows_per_col=(n+columns-1)//columns
+    row_top=H-101*mm
+    row_step=3.45*mm
     question_x0=190*mm
-    block_step=43.0*mm
-    option_offsets=[9.5*mm,17.0*mm,24.5*mm,32.0*mm]
+    block_step=170*mm/columns
+    option_offsets=[8.0*mm,12.2*mm,16.4*mm,20.6*mm]
     sx=CANON_W/W; sy=CANON_H/H
-    radius=2.2*mm*sx
+    radius=1.35*mm*sx
     for q in range(1,n+1):
-        block=(q-1)//30
-        row=(q-1)%30
+        block=(q-1)//rows_per_col
+        row=(q-1)%rows_per_col
         qx=question_x0-block*block_step
         y=row_top-row*row_step
         cy=int(round((H-y)*sy))
@@ -501,7 +503,7 @@ async def inspect(file:UploadFile=File(...),user=Depends(verify_user),credential
             results.append({"page":i,"status":"review_required","reason":"کلید پاسخ معتبر برای آزمون پیدا نشد.","student":student_qr}); continue
         if student_qr.get("question_count")!=len(key) or int(exam["question_count"])!=len(key):
             results.append({"page":i,"status":"review_required","reason":"تعداد سؤال با کلید پاسخ یکسان نیست.","student":student_qr}); continue
-        answers,uncertain,error=scan_bubbles(aligned,len(key))
+        answers,uncertain,error=scan_bubbles(aligned,len(key),student_qr.get('columns',6))
         if error:
             results.append({"page":i,"status":"review_required","reason":error,"student":student_qr}); continue
         uncertain_q={u["question"] for u in uncertain}
