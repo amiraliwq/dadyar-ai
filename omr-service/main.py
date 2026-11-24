@@ -537,15 +537,16 @@ async def inspect(file:UploadFile=File(...),user=Depends(verify_user),credential
         effective_total=len(key)-len(excluded_q)
         correct=sum(a==k for q,(a,k) in enumerate(zip(answers,key),1) if q not in excluded_q and a is not None)
         blank=sum(a is None and q not in uncertain_q and q not in excluded_q for q,a in enumerate(answers,1))
-        unresolved=len(uncertain_q-excluded_q)
+        effective_uncertain=[u for u in uncertain if int(u.get("question",0)) not in excluded_q]
+        unresolved=len(effective_uncertain)
         wrong=effective_total-correct-blank-unresolved
         coefficient=float(exam.get("negative_coefficient") or 3)
         score=correct-(wrong/coefficient if coefficient>0 else 0)
         percentage=calculate_exam_percentage(correct,wrong,len(key),len(excluded_q),coefficient)
-        results.append({"page":i,"status":"review_required" if uncertain else "processed",
+        results.append({"page":i,"status":"review_required" if effective_uncertain else "processed",
             "student":student_qr,"answers":answers,"correct":correct,"wrong":wrong,"blank":blank,
             "unresolved":unresolved,"excluded":len(excluded_q),"effective_total":effective_total,
-            "score":round(score,2),"percentage":percentage,"uncertain":uncertain})
+            "score":round(score,2),"percentage":percentage,"uncertain":effective_uncertain})
     return {"pages":results,"scoring":"100 * (negative_coefficient * correct - wrong) / (negative_coefficient * effective_questions); blanks=0",
             "warning":"پاسخ‌های مبهم را بازبینی کنید. دقت نهایی باید با برگه‌های چاپ و اسکن واقعی کالیبره شود."}
 
