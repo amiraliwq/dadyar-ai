@@ -500,9 +500,8 @@ function calculateSubmissionBreakdown({answers,key,states,exam,sections}){
   const qs=Array.from({length:Number(section.question_count)},(_,i)=>Number(section.question_start)+i);
   return {...summarize(qs),name:section.subjects?.name||exam?.subject||"درس",lesson:section.lessons?.name||"",weight:Number(section.weight||1),start:section.question_start,end:Number(section.question_start)+Number(section.question_count)-1};
  });
- const weighted=subjects.filter(x=>x.effective>0);
- const weightTotal=weighted.reduce((n,x)=>n+x.weight,0);
- const totalPercentage=weightTotal?Number((weighted.reduce((n,x)=>n+x.percentage*x.weight,0)/weightTotal).toFixed(2)):0;
+ const weightTotal=subjects.reduce((n,x)=>n+x.weight,0);
+ const totalPercentage=weightTotal?Number((subjects.reduce((n,x)=>n+x.percentage*x.weight,0)/weightTotal).toFixed(2)):0;
  return {...overall,subjects,totalPercentage,rawScore:Number((overall.correct-overall.wrong/coefficient).toFixed(2))};
 }
 function showAnswerDetails(id){
