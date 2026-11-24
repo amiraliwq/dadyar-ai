@@ -148,7 +148,7 @@ def fa_digits(value):
 def fa_digits(value):
     return str(value).translate(str.maketrans("0123456789","۰۱۲۳۴۵۶۷۸۹"))
 
-def draw_sheet_legacy(c,batch,s)
+def draw_sheet_legacy(c,batch,s):
     """Production A4 OMR: four fixed 30-question blocks, RTL options, signed QR."""
     mm=72/25.4
     margin=20*mm
