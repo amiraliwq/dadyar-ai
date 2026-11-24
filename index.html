@@ -546,7 +546,7 @@ function showAnswerDetails(id){
  const readManual=()=>{
   const nextAnswers=key.map((_,i)=>{const v=document.querySelector("[data-manual-answer='"+(i+1)+"']").value;return v===""?null:Number(v)});
   const nextStates=key.map((correct,i)=>{
-   const q=i+1,status=$("[data-question-status='"+q+"']").value;
+   const q=i+1,status=document.querySelector("[data-question-status='"+q+"']").value;
    const accepted=[...document.querySelectorAll('[data-correct-option="'+q+'"]:checked')].map(x=>Number(x.value));
    return {question:q,status,accepted_options:status==="double_correct"?accepted:[Number(correct)]};
   });
@@ -574,7 +574,7 @@ function showAnswerDetails(id){
    data.answers.forEach((answer,i)=>{
     const q=i+1,oldState=stateMap.get(q)||{question:q,status:"normal",accepted_options:[Number(key[i])]},newState=data.states[i];
     if((answers[i]??null)!==(answer??null)||JSON.stringify(oldState)!==JSON.stringify(newState)){
-     audit.push({submission_id:r.id,question_number:q,old_value:{answer:originalAnswers[i]??null,state:oldState},new_value:{answer:answer??null,state:newState},changed_by:user.id});
+     audit.push({submission_id:r.id,question_number:q,old_value:{answer:answers[i]??null,state:oldState},new_value:{answer:answer??null,state:newState},changed_by:user.id});
     }
    });
    const {error}=await sb.from("submissions").update({
