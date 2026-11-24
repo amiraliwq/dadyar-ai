@@ -461,31 +461,124 @@ $("scanButton").onclick=async()=>{
 };
 
 
+
+function getQuestionStateMap(states){
+ const map=new Map();
+ (Array.isArray(states)?states:[]).forEach(x=>{if(x&&Number.isInteger(Number(x.question)))map.set(Number(x.question),x)});
+ return map;
+}
+function calculateSubmissionBreakdown({answers,key,states,exam,sections}){
+ const stateMap=getQuestionStateMap(states),globalExcluded=new Set((exam?.excluded_questions||[]).map(Number));
+ const coefficient=Number(exam?.negative_coefficient||3),total=key.length;
+ const classify=q=>{
+  const st=stateMap.get(q)||{},answer=answers[q-1]==null?null:Number(answers[q-1]);
+  if(globalExcluded.has(q)||st.status==="excluded")return "excluded";
+  const accepted=st.status==="double_correct"&&Array.isArray(st.accepted_options)?st.accepted_options.map(Number):[Number(key[q-1])];
+  if(answer==null)return "blank";
+  return accepted.includes(answer)?"correct":"wrong";
+ };
+ const summarize=qs=>{
+  let correct=0,wrong=0,blank=0,excluded=0;
+  qs.forEach(q=>{const k=classify(q);if(k==="correct")correct++;else if(k==="wrong")wrong++;else if(k==="blank")blank++;else excluded++});
+  const effective=qs.length-excluded;
+  const percentage=effective?Number((100*(coefficient*correct-wrong)/(coefficient*effective)).toFixed(2)):0;
+  return {correct,wrong,blank,excluded,effective,percentage};
+ };
+ const overall=summarize(Array.from({length:total},(_,i)=>i+1));
+ const mapped=(sections||[]).slice().sort((a,b)=>a.question_start-b.question_start);
+ const groups=mapped.length?mapped:[{id:"all",question_start:1,question_count:total,weight:1,subjects:{name:exam?.subject||"کل آزمون"},lessons:null}];
+ const subjects=groups.map(section=>{
+  const qs=Array.from({length:Number(section.question_count)},(_,i)=>Number(section.question_start)+i);
+  return {...summarize(qs),name:section.subjects?.name||exam?.subject||"درس",lesson:section.lessons?.name||"",weight:Number(section.weight||1),start:section.question_start,end:Number(section.question_start)+Number(section.question_count)-1};
+ });
+ const weighted=subjects.filter(x=>x.effective>0);
+ const weightTotal=weighted.reduce((n,x)=>n+x.weight,0);
+ const totalPercentage=weightTotal?Number((weighted.reduce((n,x)=>n+x.percentage*x.weight,0)/weightTotal).toFixed(2)):0;
+ return {...overall,subjects,totalPercentage,rawScore:Number((overall.correct-overall.wrong/coefficient).toFixed(2))};
+}
 function showAnswerDetails(id){
  const r=reports.find(x=>x.id===id);if(!r)return;
  const ak=r.exams?.answer_keys,key=(Array.isArray(ak)?ak[0]?.answers:ak?.answers)||[];
  if(!key.length){toast("کلید پاسخ آزمون در دسترس نیست؛ ابتدا کلید را ثبت کنید.");return}
- const answers=Array.isArray(r.answers)?r.answers:[];
- const uncertain=Array.isArray(r.uncertain_answers)?r.uncertain_answers:[];
- const uncertainMap=new Map(uncertain.map(x=>[Number(x.question),x]));
+ const answers=Array.isArray(r.answers)?r.answers.slice():Array(key.length).fill(null);
+ while(answers.length<key.length)answers.push(null);
+ const originalAnswers=Array.isArray(r.ocr_answers)?r.ocr_answers.slice():answers.slice();
+ const stateMap=getQuestionStateMap(r.question_states);
+ const uncertainMap=new Map((Array.isArray(r.uncertain_answers)?r.uncertain_answers:[]).map(x=>[Number(x.question),x]));
+ const sections=r.exams?.exam_sections||[];
  const details=key.map((correct,i)=>{
-  const q=i+1,answer=answers[i]??null,flag=uncertainMap.get(q);
+  const q=i+1,answer=answers[i]??null,flag=uncertainMap.get(q),state=stateMap.get(q)||{};
+  const excluded=(r.exams?.excluded_questions||[]).map(Number).includes(q)||state.status==="excluded";
   let status,label;
-  if(flag){status="uncertain";label="نیازمند بازبینی"}
+  if(excluded){status="excluded";label="حذف‌شده"}
+  else if(flag){status="uncertain";label="نیازمند بازبینی"}
   else if(answer==null){status="blank";label="نزده"}
-  else if(Number(answer)===Number(correct)){status="correct";label="درست"}
+  else if((state.status==="double_correct"?(state.accepted_options||[correct]):[correct]).map(Number).includes(Number(answer))){status="correct";label="درست"}
   else{status="wrong";label="غلط"}
-  return {q,answer,correct:Number(correct),status,label,reason:flag?.reason||""};
+  return {q,answer,correct:Number(correct),status,label,reason:flag?.reason||"",questionState:state};
  });
  const render=filter=>{
   const list=details.filter(d=>filter==="all"||d.status===filter);
-  $("answerDetailRows").innerHTML=list.map(d=>'<tr><td>'+faNum(d.q)+'</td><td>'+(d.answer==null?"—":"گزینه "+faNum(d.answer))+'</td><td>گزینه '+faNum(d.correct)+'</td><td><span class="answer-state '+d.status+'">'+d.label+'</span>'+(d.reason?'<small class="muted">'+esc(d.reason)+'</small>':"")+'</td></tr>').join("")||'<tr><td colspan="4" class="empty">سؤالی در این گروه وجود ندارد.</td></tr>';
+  $("answerDetailRows").innerHTML=list.map(d=>'<tr><td>'+faNum(d.q)+'</td><td>'+(d.answer==null?"—":"گزینه "+faNum(d.answer))+'</td><td>گزینه '+faNum(d.correct)+'</td><td><span class="answer-state '+(d.status==="excluded"?"blank":d.status)+'">'+d.label+'</span>'+(d.reason?'<small class="muted">'+esc(d.reason)+'</small>':"")+'</td></tr>').join("")||'<tr><td colspan="4" class="empty">سؤالی در این گروه وجود ندارد.</td></tr>';
   document.querySelectorAll("[data-answer-filter]").forEach(b=>b.classList.toggle("active",b.dataset.answerFilter===filter));
  };
- $("modalRoot").innerHTML='<div class="modal-backdrop"><div class="modal answer-detail-modal"><div class="modal-head"><div><h2>گزارش سؤال‌به‌سؤال</h2><p class="muted small">'+esc((r.students?.first_name||"")+" "+(r.students?.last_name||""))+' · '+esc(r.exams?.title||"")+'</p></div><button class="close" id="closeAnswerDetails" aria-label="بستن">×</button></div><div class="answer-detail-stats"><span>درست: <b>'+faNum(r.correct_count)+'</b></span><span>غلط: <b>'+faNum(r.wrong_count)+'</b></span><span>نزده: <b>'+faNum(r.blank_count)+'</b></span><span>مبهم: <b>'+faNum(r.unresolved_count||uncertain.length)+'</b></span></div><div class="answer-detail-filters"><button class="btn btn-light active" data-answer-filter="all">همه ('+faNum(details.length)+')</button><button class="btn btn-light" data-answer-filter="wrong">غلط ('+faNum(details.filter(d=>d.status==="wrong").length)+')</button><button class="btn btn-light" data-answer-filter="blank">نزده ('+faNum(details.filter(d=>d.status==="blank").length)+')</button><button class="btn btn-light" data-answer-filter="correct">درست ('+faNum(details.filter(d=>d.status==="correct").length)+')</button><button class="btn btn-light" data-answer-filter="uncertain">مبهم ('+faNum(details.filter(d=>d.status==="uncertain").length)+')</button></div><div class="table-wrap"><table><thead><tr><th>سؤال</th><th>پاسخ دانش‌آموز</th><th>پاسخ صحیح</th><th>نتیجه</th></tr></thead><tbody id="answerDetailRows"></tbody></table></div><p class="muted small">پاسخ‌های مبهم از پاسخ‌های نزده جدا هستند و تا زمان بازبینی نباید غلط یا سفید قطعی محسوب شوند.</p></div></div>';
+ const metric=calculateSubmissionBreakdown({answers,key,states:r.question_states,exam:r.exams,sections});
+ const questionCards=key.map((correct,i)=>{
+  const q=i+1,st=stateMap.get(q)||{},globallyExcluded=(r.exams?.excluded_questions||[]).map(Number).includes(q);
+  const status=globallyExcluded?"excluded":(st.status||"normal");
+  const accepted=(status==="double_correct"&&Array.isArray(st.accepted_options)?st.accepted_options:[correct]).map(Number);
+  return '<div class="manual-question '+(status==="excluded"?"is-excluded":"")+'" data-manual-card="'+q+'"><strong>سؤال '+faNum(q)+' · کلید '+faNum(correct)+'</strong><label class="small muted">پاسخ دانش‌آموز</label><select data-manual-answer="'+q+'" aria-label="پاسخ سؤال '+q+'"><option value="">سفید / نزده</option>'+[1,2,3,4].map(n=>'<option value="'+n+'" '+(Number(answers[i])===n?"selected":"")+'>'+faNum(n)+'</option>').join("")+'</select><label class="small muted">وضعیت سؤال</label><select data-question-status="'+q+'" '+(globallyExcluded?"disabled":"")+'><option value="normal" '+(status==="normal"?"selected":"")+'>عادی</option><option value="excluded" '+(status==="excluded"?"selected":"")+'>حذف‌شده</option><option value="double_correct" '+(status==="double_correct"?"selected":"")+'>دوگزینه‌ای صحیح</option></select><div class="double-options '+(status==="double_correct"?"":"hidden")+'" data-double-options="'+q+'">'+[1,2,3,4].map(n=>'<label><input type="checkbox" data-correct-option="'+q+'" value="'+n+'" '+(accepted.includes(n)?"checked":"")+'> '+faNum(n)+'</label>').join("")+'</div></div>';
+ }).join("");
+ $("modalRoot").innerHTML='<div class="modal-backdrop"><div class="modal answer-detail-modal"><div class="modal-head"><div><h2>گزارش و اصلاح پاسخ‌ها</h2><p class="muted small">'+esc((r.students?.first_name||"")+" "+(r.students?.last_name||""))+' · '+esc(r.exams?.title||"")+'</p></div><button class="close" id="closeAnswerDetails" aria-label="بستن">×</button></div><div class="answer-detail-stats"><span>درست: <b>'+faNum(metric.correct)+'</b></span><span>غلط: <b>'+faNum(metric.wrong)+'</b></span><span>نزده: <b>'+faNum(metric.blank)+'</b></span><span>حذف‌شده: <b>'+faNum(metric.excluded)+'</b></span></div><div class="answer-detail-filters"><button class="btn btn-light active" data-answer-filter="all">همه ('+faNum(details.length)+')</button><button class="btn btn-light" data-answer-filter="wrong">غلط</button><button class="btn btn-light" data-answer-filter="blank">نزده</button><button class="btn btn-light" data-answer-filter="correct">درست</button><button class="btn btn-light" data-answer-filter="uncertain">مبهم</button></div><div class="table-wrap"><table><thead><tr><th>سؤال</th><th>پاسخ دانش‌آموز</th><th>کلید</th><th>نتیجه فعلی</th></tr></thead><tbody id="answerDetailRows"></tbody></table></div><hr style="border:0;border-top:1px solid var(--line);margin:18px 0"><h3 style="font-size:14px;margin:0 0 5px">ورود و اصلاح دستی پاسخ‌ها</h3><p class="small muted">پاسخ OCR اولیه حفظ می‌شود. تغییرات شما به‌عنوان پاسخ نهایی معلم ثبت و در سابقه ذخیره خواهد شد.</p><div class="manual-live-stats" id="manualLiveStats"></div><div class="manual-subject-results" id="manualSubjectResults"></div><div class="manual-answer-grid" id="manualAnswerGrid">'+questionCards+'</div><div class="notice info">برای سؤال دوگزینه‌ای صحیح، وضعیت را انتخاب و دست‌کم دو گزینه صحیح را علامت بزنید. سؤال حذف‌شده از مخرج درصد درس و درصد کل کنار گذاشته می‌شود.</div><div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><button class="btn btn-outline" id="cancelManualAnswers">بستن بدون ذخیره</button><button class="btn btn-primary" id="saveManualAnswers">ثبت اصلاحات و نهایی‌سازی</button></div></div></div>';
  $("closeAnswerDetails").onclick=()=>$("modalRoot").innerHTML="";
+ $("cancelManualAnswers").onclick=()=>$("modalRoot").innerHTML="";
  document.querySelectorAll("[data-answer-filter]").forEach(b=>b.onclick=()=>render(b.dataset.answerFilter));
  render("all");
+ const readManual=()=>{
+  const nextAnswers=key.map((_,i)=>{const v=$("[data-manual-answer='"+(i+1)+"']").value;return v===""?null:Number(v)});
+  const nextStates=key.map((correct,i)=>{
+   const q=i+1,status=$("[data-question-status='"+q+"']").value;
+   const accepted=[...document.querySelectorAll('[data-correct-option="'+q+'"]:checked')].map(x=>Number(x.value));
+   return {question:q,status,accepted_options:status==="double_correct"?accepted:[Number(correct)]};
+  });
+  return {answers:nextAnswers,states:nextStates};
+ };
+ const refreshLive=()=>{
+  const data=readManual(),m=calculateSubmissionBreakdown({answers:data.answers,key,states:data.states,exam:r.exams,sections});
+  $("manualLiveStats").innerHTML='<span>صحیح<b>'+faNum(m.correct)+'</b></span><span>غلط<b>'+faNum(m.wrong)+'</b></span><span>نزده<b>'+faNum(m.blank)+'</b></span><span>درصد کل<b>'+faNum(m.totalPercentage)+'٪</b></span>';
+  $("manualSubjectResults").innerHTML=m.subjects.map(x=>'<div><span>'+esc(x.name)+(x.lesson?" · "+esc(x.lesson):"")+' <small class="muted">('+faNum(x.start)+" تا "+faNum(x.end)+')</small></span><b>'+faNum(x.percentage)+'٪ · '+faNum(x.correct)+' صحیح / '+faNum(x.wrong)+' غلط</b></div>').join("");
+  document.querySelectorAll("[data-manual-card]").forEach(card=>card.classList.toggle("is-excluded",card.querySelector("[data-question-status]").value==="excluded"));
+ };
+ document.querySelectorAll("[data-question-status]").forEach(el=>el.addEventListener("change",()=>{
+  const q=el.dataset.questionStatus,wrap=$("[data-double-options='"+q+"']");
+  wrap.classList.toggle("hidden",el.value!=="double_correct");refreshLive();
+ }));
+ document.querySelectorAll("[data-manual-answer], [data-correct-option]").forEach(el=>el.addEventListener("change",refreshLive));
+ refreshLive();
+ $("saveManualAnswers").onclick=async()=>{
+  const btn=$("saveManualAnswers");btn.disabled=true;btn.textContent="در حال ذخیره…";
+  try{
+   const data=readManual();
+   for(const st of data.states){if(st.status==="double_correct"&&st.accepted_options.length<2)throw new Error("برای سؤال "+st.question+" حداقل دو گزینه صحیح انتخاب کنید.");}
+   const m=calculateSubmissionBreakdown({answers:data.answers,key,states:data.states,exam:r.exams,sections});
+   const audit=[];
+   data.answers.forEach((answer,i)=>{
+    const q=i+1,oldState=stateMap.get(q)||{question:q,status:"normal",accepted_options:[Number(key[i])]},newState=data.states[i];
+    if((originalAnswers[i]??null)!==(answer??null)||JSON.stringify(oldState)!==JSON.stringify(newState)){
+     audit.push({submission_id:r.id,question_number:q,old_value:{answer:originalAnswers[i]??null,state:oldState},new_value:{answer:answer??null,state:newState},changed_by:user.id});
+    }
+   });
+   const {error}=await sb.from("submissions").update({
+    answers:data.answers,question_states:data.states,correct_count:m.correct,wrong_count:m.wrong,blank_count:m.blank,
+    unresolved_count:0,uncertain_answers:[],raw_score:m.rawScore,review_required:false,manual_override:true,
+    manually_reviewed_by:user.id,manually_reviewed_at:new Date().toISOString()
+   }).eq("id",r.id);
+   if(error)throw error;
+   if(audit.length){const logged=await sb.from("submission_answer_audit").insert(audit);if(logged.error)toast("پاسخ‌ها ذخیره شد؛ اما ثبت سابقه تغییرات ناموفق بود: "+logged.error.message);}
+   toast("پاسخ‌های دستی و نمره‌های تفکیکی ذخیره شدند.");
+   $("modalRoot").innerHTML="";await loadReports();
+  }catch(err){toast("ذخیره اصلاحات ناموفق بود: "+err.message);btn.disabled=false;btn.textContent="ثبت اصلاحات و نهایی‌سازی";}
+ };
 }
 
 async function reviewSubmission(id){
