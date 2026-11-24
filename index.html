@@ -245,10 +245,9 @@ function calculateExamPercentage({correct=0,wrong=0,totalQuestions=0,excludedQue
  return Number(result.toFixed(2));
 }
 function getReportPercentage(report){
- const key=report.exams?.answer_keys;
- const answers=Array.isArray(key)?key[0]?.answers:key?.answers;
- const total=Array.isArray(answers)?answers.length:Number(report.exams?.question_count||0);
- const excluded=Array.isArray(report.exams?.excluded_questions)?report.exams.excluded_questions:[];
+ const ak=report.exams?.answer_keys,key=(Array.isArray(ak)?ak[0]?.answers:ak?.answers)||[];
+ if(key.length&&Array.isArray(report.answers))return calculateSubmissionBreakdown({answers:report.answers,key,states:report.question_states,exam:report.exams,sections:report.exams?.exam_sections||[]}).totalPercentage;
+ const total=Number(report.exams?.question_count||0),excluded=Array.isArray(report.exams?.excluded_questions)?report.exams.excluded_questions:[];
  return calculateExamPercentage({correct:Number(report.correct_count||0),wrong:Number(report.wrong_count||0),totalQuestions:total,excludedQuestions:excluded,negativeCoefficient:Number(report.exams?.negative_coefficient||3)});
 }
 async function loadReports(){
@@ -535,7 +534,7 @@ function showAnswerDetails(id){
  document.querySelectorAll("[data-answer-filter]").forEach(b=>b.onclick=()=>render(b.dataset.answerFilter));
  render("all");
  const readManual=()=>{
-  const nextAnswers=key.map((_,i)=>{const v=$("[data-manual-answer='"+(i+1)+"']").value;return v===""?null:Number(v)});
+  const nextAnswers=key.map((_,i)=>{const v=document.querySelector("[data-manual-answer='"+(i+1)+"']").value;return v===""?null:Number(v)});
   const nextStates=key.map((correct,i)=>{
    const q=i+1,status=$("[data-question-status='"+q+"']").value;
    const accepted=[...document.querySelectorAll('[data-correct-option="'+q+'"]:checked')].map(x=>Number(x.value));
@@ -550,7 +549,7 @@ function showAnswerDetails(id){
   document.querySelectorAll("[data-manual-card]").forEach(card=>card.classList.toggle("is-excluded",card.querySelector("[data-question-status]").value==="excluded"));
  };
  document.querySelectorAll("[data-question-status]").forEach(el=>el.addEventListener("change",()=>{
-  const q=el.dataset.questionStatus,wrap=$("[data-double-options='"+q+"']");
+  const q=el.dataset.questionStatus,wrap=document.querySelector("[data-double-options='"+q+"']");
   wrap.classList.toggle("hidden",el.value!=="double_correct");refreshLive();
  }));
  document.querySelectorAll("[data-manual-answer], [data-correct-option]").forEach(el=>el.addEventListener("change",refreshLive));
@@ -564,7 +563,7 @@ function showAnswerDetails(id){
    const audit=[];
    data.answers.forEach((answer,i)=>{
     const q=i+1,oldState=stateMap.get(q)||{question:q,status:"normal",accepted_options:[Number(key[i])]},newState=data.states[i];
-    if((originalAnswers[i]??null)!==(answer??null)||JSON.stringify(oldState)!==JSON.stringify(newState)){
+    if((answers[i]??null)!==(answer??null)||JSON.stringify(oldState)!==JSON.stringify(newState)){
      audit.push({submission_id:r.id,question_number:q,old_value:{answer:originalAnswers[i]??null,state:oldState},new_value:{answer:answer??null,state:newState},changed_by:user.id});
     }
    });
