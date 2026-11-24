@@ -125,8 +125,28 @@ async def supabase_rows(table,token,params):
         raise HTTPException(503,"اتصال به پایگاه داده برقرار نشد.")
 
 async def exam_context(exam_id,token):
-    rows=await supabase_rows("exams",token,{"select":"id,institution_id,question_count,negative_coefficient","id":"eq."+str(exam_id)})
+    # Read optional excluded-question metadata when the schema provides it.
+    rows=await supabase_rows("exams",token,{"select":"*","id":"eq."+str(exam_id)})
     return rows[0] if rows else None
+
+
+def calculate_exam_percentage(correct, wrong, total_questions, excluded_questions=0,
+                              negative_coefficient=3, clamp_minimum_zero=False):
+    """Return a two-decimal negative-marking percentage; blanks stay in denominator."""
+    values=(correct,wrong,total_questions,excluded_questions)
+    if any(isinstance(v,bool) or not isinstance(v,int) for v in values):
+        raise ValueError("تعداد پاسخ‌ها و سؤال‌ها باید عدد صحیح نامنفی باشد.")
+    if min(values)<0 or excluded_questions>total_questions or correct+wrong>total_questions-excluded_questions:
+        raise ValueError("تعداد پاسخ‌های صحیح/غلط یا سؤال‌های حذف‌شده نامعتبر است.")
+    if not isinstance(negative_coefficient,(int,float)) or isinstance(negative_coefficient,bool) or not np.isfinite(negative_coefficient) or negative_coefficient<=0:
+        raise ValueError("ضریب نمره منفی باید عددی بزرگ‌تر از صفر باشد.")
+    effective_total=total_questions-excluded_questions
+    if effective_total==0:
+        return 0.0
+    percentage=100.0*((negative_coefficient*correct)-wrong)/(negative_coefficient*effective_total)
+    if clamp_minimum_zero:
+        percentage=max(0.0,percentage)
+    return round(percentage+0.0,2)
 
 async def student_context(student_id,institution_id,token):
     rows=await supabase_rows("students",token,{"select":"id,institution_id,student_code,first_name,last_name","id":"eq."+str(student_id),"institution_id":"eq."+str(institution_id)})
@@ -507,16 +527,26 @@ async def inspect(file:UploadFile=File(...),user=Depends(verify_user),credential
         if error:
             results.append({"page":i,"status":"review_required","reason":error,"student":student_qr}); continue
         uncertain_q={u["question"] for u in uncertain}
-        correct=sum(a==k for a,k in zip(answers,key) if a is not None)
-        blank=sum(a is None and q not in uncertain_q for q,a in enumerate(answers,1))
-        unresolved=len(uncertain_q)
-        wrong=len(key)-correct-blank-unresolved
+        excluded_raw=exam.get("excluded_questions") or []
+        try:
+            excluded_q={int(q) for q in excluded_raw}
+        except (TypeError,ValueError):
+            results.append({"page":i,"status":"review_required","reason":"فهرست سؤال‌های حذف‌شده در تنظیمات آزمون معتبر نیست.","student":student_qr}); continue
+        if any(q<1 or q>len(key) for q in excluded_q):
+            results.append({"page":i,"status":"review_required","reason":"شماره یکی از سؤال‌های حذف‌شده خارج از محدوده آزمون است.","student":student_qr}); continue
+        effective_total=len(key)-len(excluded_q)
+        correct=sum(a==k for q,(a,k) in enumerate(zip(answers,key),1) if q not in excluded_q and a is not None)
+        blank=sum(a is None and q not in uncertain_q and q not in excluded_q for q,a in enumerate(answers,1))
+        unresolved=len(uncertain_q-excluded_q)
+        wrong=effective_total-correct-blank-unresolved
         coefficient=float(exam.get("negative_coefficient") or 3)
         score=correct-(wrong/coefficient if coefficient>0 else 0)
+        percentage=calculate_exam_percentage(correct,wrong,len(key),len(excluded_q),coefficient)
         results.append({"page":i,"status":"review_required" if uncertain else "processed",
             "student":student_qr,"answers":answers,"correct":correct,"wrong":wrong,"blank":blank,
-            "unresolved":unresolved,"score":round(score,2),"uncertain":uncertain})
-    return {"pages":results,"scoring":"correct - wrong / negative_coefficient; blank=0",
+            "unresolved":unresolved,"excluded":len(excluded_q),"effective_total":effective_total,
+            "score":round(score,2),"percentage":percentage,"uncertain":uncertain})
+    return {"pages":results,"scoring":"100 * (negative_coefficient * correct - wrong) / (negative_coefficient * effective_questions); blanks=0",
             "warning":"پاسخ‌های مبهم را بازبینی کنید. دقت نهایی باید با برگه‌های چاپ و اسکن واقعی کالیبره شود."}
 
 
