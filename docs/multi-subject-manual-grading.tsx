@@ -137,14 +137,17 @@ export function ExamSubjectRanges({ questionCount, value, onChange }: ExamSubjec
   const update = (index: number, patch: Partial<ExamSubjectRange>) =>
     onChange(value.map((row, i) => i === index ? { ...row, ...patch } : row));
   const add = () => {
-    const last = value[value.length - 1];
-    const startQuestion = last ? last.endQuestion + 1 : 1;
-    onChange([...value, {
-      subjectName: "",
-      startQuestion,
-      endQuestion: questionCount,
-      weight: 1,
-    }]);
+    const next = [...value];
+    const last = next[next.length - 1];
+    let startQuestion = last ? last.endQuestion + 1 : 1;
+    let endQuestion = questionCount;
+    if (last && last.endQuestion - last.startQuestion >= 1) {
+      const split = Math.floor((last.startQuestion + last.endQuestion) / 2);
+      startQuestion = split + 1;
+      endQuestion = last.endQuestion;
+      next[next.length - 1] = { ...last, endQuestion: split };
+    }
+    onChange([...next, { subjectName: "", startQuestion, endQuestion, weight: 1 }]);
   };
   return (
     <section dir="rtl" aria-label="تفکیک درس‌های آزمون">
@@ -211,6 +214,14 @@ export function ManualAnswerGrid({
     });
     onChange(answers, next);
   };
+  const changeAcceptedOption = (q: number, option: Option, checked: boolean) => {
+    const current = stateByQuestion.get(q);
+    const accepted = new Set(current?.acceptedOptions ?? [answerKey[q - 1]]);
+    checked ? accepted.add(option) : accepted.delete(option);
+    const next = states.filter(s => s.question !== q);
+    next.push({ question: q, status: "double_correct", acceptedOptions: [...accepted] });
+    onChange(answers, next);
+  };
   return (
     <section dir="rtl" aria-label="ورود دستی پاسخ‌ها">
       <div aria-live="polite">
@@ -244,6 +255,17 @@ export function ManualAnswerGrid({
                   <option value="double_correct">دوگزینه‌ای صحیح</option>
                 </select>
               </label>
+              {state?.status === "double_correct" && (
+                <div aria-label={`گزینه‌های صحیح سؤال ${q}`}>
+                  {[1, 2, 3, 4].map(n => (
+                    <label key={n}>
+                      <input type="checkbox" checked={state.acceptedOptions.includes(n as Option)}
+                        onChange={e => changeAcceptedOption(q, n as Option, e.target.checked)} />
+                      گزینه {n}
+                    </label>
+                  ))}
+                </div>
+              )}
             </fieldset>
           );
         })}
