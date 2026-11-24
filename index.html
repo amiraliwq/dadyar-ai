@@ -56,6 +56,15 @@ body{background:radial-gradient(ellipse at 8% 0%,#fff1f2 0,transparent 32%),line
 @media(max-width:1050px){.sheet-workspace{grid-template-columns:1fr}.sheet-preview-card{position:static}.sheet-preview{max-width:460px;margin:auto}}
 @media(max-width:700px){.sheet-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.sheet-step{padding:9px;font-size:10px}.sheet-student-list{grid-template-columns:1fr}.sheet-panel{padding:15px}.sheet-preview-wrap{padding:9px}.sheet-preview{max-width:390px}.sheet-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
+
+.answer-detail-modal{max-width:850px;width:min(94vw,850px);max-height:88vh;overflow:auto}
+.answer-detail-stats{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0}.answer-detail-stats span{background:#f5f6f8;border:1px solid var(--line);padding:8px 11px;border-radius:9px;font-size:11px}
+.answer-detail-filters{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}.answer-detail-filters .active{border-color:#b52b3a;background:#fff3f4;color:#a91e2e}
+.answer-state{display:inline-block;padding:4px 8px;border-radius:7px;font-size:10px;font-weight:800;white-space:nowrap}
+.answer-state.correct{background:#e8f6ef;color:#16734b}.answer-state.wrong{background:#fff0ef;color:#b42318}.answer-state.blank{background:#f1f2f4;color:#667085}.answer-state.uncertain{background:#fff5df;color:#9a6700}
+#answerDetailRows td{vertical-align:middle}
+@media(max-width:640px){.answer-detail-modal{padding:14px}.answer-detail-modal .table-wrap{overflow-x:auto}.answer-detail-modal table{min-width:460px}.answer-detail-filters .btn{padding:7px 9px;font-size:10px}}
+
 </style>
 </head>
 <body>
@@ -210,7 +219,8 @@ async function loadReports(){
  reports=data||[];
  $("statGraded").textContent=faNum(reports.filter(r=>!r.review_required).length);
  $("statReview").textContent=faNum(reports.filter(r=>r.review_required).length);
- $("reportsTable").innerHTML=reports.map(r=>'<tr><td>'+esc((r.students?.first_name||"")+" "+(r.students?.last_name||""))+'</td><td>'+esc(r.students?.student_code||"")+'</td><td>'+esc(r.exams?.title||"")+'</td><td>'+faNum(r.correct_count)+'</td><td>'+faNum(r.wrong_count)+'</td><td>'+faNum(r.blank_count)+'</td><td>'+faNum(r.raw_score)+'</td><td>'+(r.source_file_path?'<button class="btn btn-outline" data-image="'+r.id+'">مشاهده تصویر</button>':'<span class="muted">ثبت نشده</span>')+'</td><td>'+(r.review_required?'<button class="btn btn-light" data-review="'+r.id+'">بازبینی پاسخ‌ها</button>':'<span class="status">قطعی</span>')+'</td></tr>').join("")||'<tr><td colspan="9" class="empty">هنوز گزارشی ثبت نشده است.</td></tr>';
+ $("reportsTable").innerHTML=reports.map(r=>'<tr><td>'+esc((r.students?.first_name||"")+" "+(r.students?.last_name||""))+'</td><td>'+esc(r.students?.student_code||"")+'</td><td>'+esc(r.exams?.title||"")+'</td><td>'+faNum(r.correct_count)+'</td><td>'+faNum(r.wrong_count)+'</td><td>'+faNum(r.blank_count)+'</td><td>'+faNum(r.raw_score)+'</td><td>'+(r.source_file_path?'<button class="btn btn-outline" data-image="'+r.id+'">مشاهده تصویر</button>':'<span class="muted">ثبت نشده</span>')+'</td><td><button class="btn btn-light" data-details="'+r.id+'">جزئیات پاسخ‌ها</button> '+(r.review_required?'<button class="btn btn-light" data-review="'+r.id+'">بازبینی</button>':'<span class="status">قطعی</span>')+'</td></tr>').join("")||'<tr><td colspan="9" class="empty">هنوز گزارشی ثبت نشده است.</td></tr>';
+ document.querySelectorAll("[data-details]").forEach(b=>b.onclick=()=>showAnswerDetails(b.dataset.details));
  document.querySelectorAll("[data-review]").forEach(b=>b.onclick=()=>reviewSubmission(b.dataset.review));
  document.querySelectorAll("[data-image]").forEach(b=>b.onclick=async()=>{const row=reports.find(x=>x.id===b.dataset.image);if(!row?.source_file_path)return;const {data,error}=await sb.storage.from("answer-sheets").createSignedUrl(row.source_file_path,300);if(error){toast("دریافت تصویر ممکن نشد: "+error.message);return}window.open(data.signedUrl,"_blank","noopener");});
 }
@@ -340,6 +350,34 @@ $("scanButton").onclick=async()=>{
   toast("پردازش گروهی پایان یافت");
  }finally{btn.disabled=false}
 };
+
+
+function showAnswerDetails(id){
+ const r=reports.find(x=>x.id===id);if(!r)return;
+ const ak=r.exams?.answer_keys,key=(Array.isArray(ak)?ak[0]?.answers:ak?.answers)||[];
+ if(!key.length){toast("کلید پاسخ آزمون در دسترس نیست؛ ابتدا کلید را ثبت کنید.");return}
+ const answers=Array.isArray(r.answers)?r.answers:[];
+ const uncertain=Array.isArray(r.uncertain_answers)?r.uncertain_answers:[];
+ const uncertainMap=new Map(uncertain.map(x=>[Number(x.question),x]));
+ const details=key.map((correct,i)=>{
+  const q=i+1,answer=answers[i]??null,flag=uncertainMap.get(q);
+  let status,label;
+  if(flag){status="uncertain";label="نیازمند بازبینی"}
+  else if(answer==null){status="blank";label="نزده"}
+  else if(Number(answer)===Number(correct)){status="correct";label="درست"}
+  else{status="wrong";label="غلط"}
+  return {q,answer,correct:Number(correct),status,label,reason:flag?.reason||""};
+ });
+ const render=filter=>{
+  const list=details.filter(d=>filter==="all"||d.status===filter);
+  $("answerDetailRows").innerHTML=list.map(d=>'<tr><td>'+faNum(d.q)+'</td><td>'+(d.answer==null?"—":"گزینه "+faNum(d.answer))+'</td><td>گزینه '+faNum(d.correct)+'</td><td><span class="answer-state '+d.status+'">'+d.label+'</span>'+(d.reason?'<small class="muted">'+esc(d.reason)+'</small>':"")+'</td></tr>').join("")||'<tr><td colspan="4" class="empty">سؤالی در این گروه وجود ندارد.</td></tr>';
+  document.querySelectorAll("[data-answer-filter]").forEach(b=>b.classList.toggle("active",b.dataset.answerFilter===filter));
+ };
+ $("modalRoot").innerHTML='<div class="modal-backdrop"><div class="modal answer-detail-modal"><div class="modal-head"><div><h2>گزارش سؤال‌به‌سؤال</h2><p class="muted small">'+esc((r.students?.first_name||"")+" "+(r.students?.last_name||""))+' · '+esc(r.exams?.title||"")+'</p></div><button class="close" id="closeAnswerDetails" aria-label="بستن">×</button></div><div class="answer-detail-stats"><span>درست: <b>'+faNum(r.correct_count)+'</b></span><span>غلط: <b>'+faNum(r.wrong_count)+'</b></span><span>نزده: <b>'+faNum(r.blank_count)+'</b></span><span>مبهم: <b>'+faNum(r.unresolved_count||uncertain.length)+'</b></span></div><div class="answer-detail-filters"><button class="btn btn-light active" data-answer-filter="all">همه ('+faNum(details.length)+')</button><button class="btn btn-light" data-answer-filter="wrong">غلط ('+faNum(details.filter(d=>d.status==="wrong").length)+')</button><button class="btn btn-light" data-answer-filter="blank">نزده ('+faNum(details.filter(d=>d.status==="blank").length)+')</button><button class="btn btn-light" data-answer-filter="correct">درست ('+faNum(details.filter(d=>d.status==="correct").length)+')</button><button class="btn btn-light" data-answer-filter="uncertain">مبهم ('+faNum(details.filter(d=>d.status==="uncertain").length)+')</button></div><div class="table-wrap"><table><thead><tr><th>سؤال</th><th>پاسخ دانش‌آموز</th><th>پاسخ صحیح</th><th>نتیجه</th></tr></thead><tbody id="answerDetailRows"></tbody></table></div><p class="muted small">پاسخ‌های مبهم از پاسخ‌های نزده جدا هستند و تا زمان بازبینی نباید غلط یا سفید قطعی محسوب شوند.</p></div></div>';
+ $("closeAnswerDetails").onclick=()=>$("modalRoot").innerHTML="";
+ document.querySelectorAll("[data-answer-filter]").forEach(b=>b.onclick=()=>render(b.dataset.answerFilter));
+ render("all");
+}
 
 async function reviewSubmission(id){
  const r=reports.find(x=>x.id===id);if(!r)return;
