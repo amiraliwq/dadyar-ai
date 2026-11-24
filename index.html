@@ -179,7 +179,7 @@ body{background:radial-gradient(ellipse at 8% 0%,#fff1f2 0,transparent 32%),line
    </div>
   </section>
   <section id="page-reports" class="page">
-   <div class="card"><div class="section-head"><div><h2>گزارش نتایج آزمون</h2><p>خروجی قابل دریافت در Excel</p></div><button class="btn btn-primary" id="exportExcel">دریافت فایل Excel</button></div><div class="table-wrap"><table><thead><tr><th>دانش‌آموز</th><th>کد</th><th>آزمون</th><th>صحیح</th><th>غلط</th><th>سفید</th><th>نمره</th><th>تصویر پاسخ‌برگ</th><th>عملیات</th></tr></thead><tbody id="reportsTable"></tbody></table></div></div>
+   <div class="card"><div class="section-head"><div><h2>گزارش نتایج آزمون</h2><p>خروجی قابل دریافت در Excel</p></div><button class="btn btn-primary" id="exportExcel">دریافت فایل Excel</button></div><div class="table-wrap"><table><thead><tr><th>دانش‌آموز</th><th>کد</th><th>آزمون</th><th>صحیح</th><th>غلط</th><th>سفید</th><th>نمره خام</th><th>درصد</th><th>تصویر پاسخ‌برگ</th><th>عملیات</th></tr></thead><tbody id="reportsTable"></tbody></table></div></div>
   </section>
   <section id="page-settings" class="page">
    <div class="content-grid">
@@ -213,13 +213,34 @@ async function loadAll(){if(!profile){showOnboarding();return}$("schoolPill").te
 async function loadClasses(){const {data,error}=await sb.from("classes").select("*").order("created_at",{ascending:false});if(error){toast(error.message);return}classes=data||[];const opts='<option value="">انتخاب کلاس</option>'+classes.map(c=>'<option value="'+c.id+'">'+esc(c.title)+'</option>').join("");$("studentClass").innerHTML=opts;$("sheetClass").innerHTML='<option value="">همه کلاس‌ها</option>'+classes.map(c=>'<option value="'+c.id+'">'+esc(c.title)+'</option>').join("")}
 async function loadStudents(){const {data,error}=await sb.from("students").select("*,classes(title)").order("last_name");if(error){toast(error.message);return}students=data||[];$("statStudents").textContent=faNum(students.length);$("studentsTable").innerHTML=students.map(s=>'<tr><td>'+esc(s.first_name+" "+s.last_name)+'</td><td>'+esc(s.student_code)+'</td><td>'+esc(s.classes?.title||"—")+'</td></tr>').join("")||'<tr><td colspan="3" class="empty">هنوز دانش‌آموزی ثبت نشده است.</td></tr>'}
 async function loadExams(){const {data,error}=await sb.from("exams").select("*,answer_keys(answers)").order("created_at",{ascending:false});if(error){toast(error.message);return}exams=data||[];$("statExams").textContent=faNum(exams.length);$("examList").innerHTML=exams.map(e=>'<div class="service-row"><span>'+esc(e.title)+'<small class="muted"> · '+esc(e.subject||"")+'</small></span><b>'+faNum(e.question_count)+' سؤال</b></div>').join("")||'<div class="empty">آزمونی ثبت نشده است.</div>';$("recentExams").innerHTML=exams.slice(0,5).map(e=>'<tr><td>'+esc(e.title)+'</td><td>'+faNum(e.question_count)+'</td><td>'+esc(e.exam_date||"—")+'</td><td><span class="status">ثبت‌شده</span></td></tr>').join("")||'<tr><td colspan="4" class="empty">هنوز آزمونی ثبت نشده است.</td></tr>';const o='<option value="">انتخاب آزمون</option>'+exams.map(e=>'<option value="'+e.id+'">'+esc(e.title)+'</option>').join("");$("sheetExam").innerHTML=o;$("gradeExam").innerHTML=o}
+function calculateExamPercentage({correct=0,wrong=0,totalQuestions=0,excludedQuestions=[],negativeCoefficient=3,clampMinimumZero=false}={}){
+ const isCount=n=>Number.isSafeInteger(n)&&n>=0;
+ if(!isCount(correct)||!isCount(wrong)||!isCount(totalQuestions))throw new TypeError("تعداد صحیح، غلط و کل سؤال‌ها باید عدد صحیح نامنفی باشد.");
+ if(!Array.isArray(excludedQuestions))throw new TypeError("فهرست سؤال‌های حذف‌شده باید آرایه باشد.");
+ const excluded=new Set(excludedQuestions);
+ if([...excluded].some(q=>!Number.isSafeInteger(q)||q<1||q>totalQuestions))throw new RangeError("شماره سؤال حذف‌شده خارج از محدوده آزمون است.");
+ const effectiveTotal=totalQuestions-excluded.size;
+ if(correct+wrong>effectiveTotal)throw new RangeError("تعداد پاسخ‌های صحیح و غلط از سؤال‌های مؤثر بیشتر است.");
+ if(typeof negativeCoefficient!=="number"||!Number.isFinite(negativeCoefficient)||negativeCoefficient<=0)throw new RangeError("ضریب نمره منفی باید عددی بزرگ‌تر از صفر باشد.");
+ if(effectiveTotal===0)return 0;
+ let result=100*((negativeCoefficient*correct)-wrong)/(negativeCoefficient*effectiveTotal);
+ if(clampMinimumZero)result=Math.max(0,result);
+ return Number(result.toFixed(2));
+}
+function getReportPercentage(report){
+ const key=report.exams?.answer_keys;
+ const answers=Array.isArray(key)?key[0]?.answers:key?.answers;
+ const total=Array.isArray(answers)?answers.length:Number(report.exams?.question_count||0);
+ const excluded=Array.isArray(report.exams?.excluded_questions)?report.exams.excluded_questions:[];
+ return calculateExamPercentage({correct:Number(report.correct_count||0),wrong:Number(report.wrong_count||0),totalQuestions:total,excludedQuestions:excluded,negativeCoefficient:Number(report.exams?.negative_coefficient||3)});
+}
 async function loadReports(){
- const {data,error}=await sb.from("submissions").select("*,students(first_name,last_name,student_code),exams(title,answer_keys(answers))").order("created_at",{ascending:false}).limit(1000);
+ const {data,error}=await sb.from("submissions").select("*,students(first_name,last_name,student_code),exams(*,answer_keys(answers))").order("created_at",{ascending:false}).limit(1000);
  if(error){toast(error.message);return}
  reports=data||[];
  $("statGraded").textContent=faNum(reports.filter(r=>!r.review_required).length);
  $("statReview").textContent=faNum(reports.filter(r=>r.review_required).length);
- $("reportsTable").innerHTML=reports.map(r=>'<tr><td>'+esc((r.students?.first_name||"")+" "+(r.students?.last_name||""))+'</td><td>'+esc(r.students?.student_code||"")+'</td><td>'+esc(r.exams?.title||"")+'</td><td>'+faNum(r.correct_count)+'</td><td>'+faNum(r.wrong_count)+'</td><td>'+faNum(r.blank_count)+'</td><td>'+faNum(r.raw_score)+'</td><td>'+(r.source_file_path?'<button class="btn btn-outline" data-image="'+r.id+'">مشاهده تصویر</button>':'<span class="muted">ثبت نشده</span>')+'</td><td><button class="btn btn-light" data-details="'+r.id+'">جزئیات پاسخ‌ها</button> '+(r.review_required?'<button class="btn btn-light" data-review="'+r.id+'">بازبینی</button>':'<span class="status">قطعی</span>')+'</td></tr>').join("")||'<tr><td colspan="9" class="empty">هنوز گزارشی ثبت نشده است.</td></tr>';
+ $("reportsTable").innerHTML=reports.map(r=>'<tr><td>'+esc((r.students?.first_name||"")+" "+(r.students?.last_name||""))+'</td><td>'+esc(r.students?.student_code||"")+'</td><td>'+esc(r.exams?.title||"")+'</td><td>'+faNum(r.correct_count)+'</td><td>'+faNum(r.wrong_count)+'</td><td>'+faNum(r.blank_count)+'</td><td>'+faNum(r.raw_score)+'</td><td>'+(r.source_file_path?'<button class="btn btn-outline" data-image="'+r.id+'">مشاهده تصویر</button>':'<span class="muted">ثبت نشده</span>')+'</td><td><button class="btn btn-light" data-details="'+r.id+'">جزئیات پاسخ‌ها</button> '+(r.review_required?'<button class="btn btn-light" data-review="'+r.id+'">بازبینی</button>':'<span class="status">قطعی</span>')+'</td></tr>').join("")||'<tr><td colspan="10" class="empty">هنوز گزارشی ثبت نشده است.</td></tr>';
  document.querySelectorAll("[data-details]").forEach(b=>b.onclick=()=>showAnswerDetails(b.dataset.details));
  document.querySelectorAll("[data-review]").forEach(b=>b.onclick=()=>reviewSubmission(b.dataset.review));
  document.querySelectorAll("[data-image]").forEach(b=>b.onclick=async()=>{const row=reports.find(x=>x.id===b.dataset.image);if(!row?.source_file_path)return;const {data,error}=await sb.storage.from("answer-sheets").createSignedUrl(row.source_file_path,300);if(error){toast("دریافت تصویر ممکن نشد: "+error.message);return}window.open(data.signedUrl,"_blank","noopener");});
@@ -339,7 +360,7 @@ $("scanButton").onclick=async()=>{
      },{onConflict:"exam_id,student_id"});
      if(error)throw error;
      if(p.status==="processed"&&!(p.unresolved||0))done++;else review++;
-     lines.push(st.first_name+" "+st.last_name+" · "+file.name+": صحیح "+p.correct+"، غلط "+p.wrong+"، سفید "+p.blank+"، نمره "+p.score+((p.status!=="processed"||(p.unresolved||0)>0)?" · نیازمند بازبینی":" · ثبت قطعی"));
+     lines.push(st.first_name+" "+st.last_name+" · "+file.name+": صحیح "+p.correct+"، غلط "+p.wrong+"، سفید "+p.blank+"، نمره خام "+p.score+"، درصد "+faNum(p.percentage??0)+"٪"+((p.status!=="processed"||(p.unresolved||0)>0)?" · نیازمند بازبینی":" · ثبت قطعی"));
     }
     if(!(result.pages||[]).length){failed++;lines.push(file.name+": هیچ صفحه‌ای از فایل پردازش نشد.");}
    }catch(err){failed++;lines.push(file.name+": خطا — "+err.message);}
