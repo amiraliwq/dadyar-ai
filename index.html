@@ -263,6 +263,8 @@ $("exportExcel").onclick=()=>{if(!reports.length){toast("گزارشی برای �
 const pageNames={dashboard:["داشبورد مدیریت","نمای کلی عملکرد مدرسه و آزمون‌ها"],exams:["آزمون‌ها و کلید پاسخ","ساخت آزمون و مدیریت پاسخ‌های صحیح"],students:["دانش‌آموزان و کلاس‌ها","مدیریت کلاس‌ها و فهرست دانش‌آموزان"],sheets:["تولید پاسخ‌برگ و QR","ساخت پاسخ‌برگ اختصاصی برای دانش‌آموزان"],grading:["تصحیح پاسخ‌برگ","خواندن پاسخ‌ها از تصویر و PDF"],reports:["کارنامه و گزارش‌ها","مشاهده و دریافت گزارش Excel"],settings:["تنظیمات سامانه","اطلاعات مدرسه و سرویس‌های متصل"]};
 function gotoPage(page){document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));$("page-"+page).classList.add("active");document.querySelectorAll(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.page===page));$("pageTitle").textContent=pageNames[page][0];$("pageSubtitle").textContent=pageNames[page][1];window.scrollTo({top:0,behavior:"smooth"})}
 document.querySelectorAll("[data-page]").forEach(b=>b.onclick=()=>gotoPage(b.dataset.page));document.querySelectorAll("[data-goto]").forEach(b=>b.onclick=()=>gotoPage(b.dataset.goto));
+window.dadyarWorkspace={get sb(){return sb},get profile(){return profile},get exams(){return exams}};
 init();
 </script>
+<script src="/features.js"></script>
 </body></html>
