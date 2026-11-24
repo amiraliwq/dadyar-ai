@@ -3,7 +3,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends fonts-dejavu-core && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY main.py .
+COPY main.py omr_layout.py .
 ENV PORT=8080
 ENV DADYAR_FONT=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
 EXPOSE 8080
