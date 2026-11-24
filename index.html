@@ -65,6 +65,23 @@ body{background:radial-gradient(ellipse at 8% 0%,#fff1f2 0,transparent 32%),line
 #answerDetailRows td{vertical-align:middle}
 @media(max-width:640px){.answer-detail-modal{padding:14px}.answer-detail-modal .table-wrap{overflow-x:auto}.answer-detail-modal table{min-width:460px}.answer-detail-filters .btn{padding:7px 9px;font-size:10px}}
 
+
+/* Multi-subject mapping and manual answer correction */
+.exam-section-editor{display:grid;gap:9px;margin:8px 0 14px}
+.exam-section-row{display:grid;grid-template-columns:1.2fr 1fr 82px 82px 78px 34px;gap:7px;align-items:end;padding:10px;border:1px solid var(--line);border-radius:12px;background:#fafbfc}
+.exam-section-row .field{margin:0}.exam-section-row label{font-size:10px}.exam-section-row input{min-width:0;padding:8px;font-size:11px}
+.exam-section-row .remove-section{height:38px;border-radius:9px;background:#fff0f1;color:#b42332}
+.manual-answer-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:14px 0}
+.manual-question{border:1px solid var(--line);border-radius:11px;padding:9px;display:grid;gap:6px;min-width:0;background:#fff}
+.manual-question strong{font-size:11px}.manual-question select{width:100%;min-width:0;border:1px solid #dfe4ec;border-radius:8px;padding:7px;background:#fff;font-size:11px}
+.manual-question .double-options{display:flex;flex-wrap:wrap;gap:5px;font-size:10px}.manual-question .double-options label{display:flex;align-items:center;gap:2px}
+.manual-live-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:12px 0}
+.manual-live-stats span{background:#f7f8fa;border:1px solid var(--line);border-radius:9px;padding:9px;font-size:10px}
+.manual-live-stats b{display:block;font-size:15px;margin-top:4px}
+.manual-subject-results{display:grid;gap:7px;margin:12px 0}.manual-subject-results>div{display:flex;justify-content:space-between;gap:8px;border:1px solid var(--line);padding:9px 11px;border-radius:9px;font-size:11px}
+.manual-question.is-excluded{background:#fff8e9;border-color:#e8c98d}
+@media(max-width:850px){.exam-section-row{grid-template-columns:repeat(2,minmax(0,1fr))}.exam-section-row .remove-section{width:100%}.manual-answer-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:520px){.manual-answer-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.manual-live-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
 <body>
@@ -120,7 +137,7 @@ body{background:radial-gradient(ellipse at 8% 0%,#fff1f2 0,transparent 32%),line
   <section id="page-exams" class="page">
    <div class="content-grid">
     <div class="card panel"><h2>ایجاد آزمون و کلید پاسخ</h2><p>برای هر آزمون یک کلید پاسخ مستقل ثبت کنید.</p>
-     <form id="examForm"><div class="field"><label>عنوان آزمون</label><input id="examTitle" required placeholder="مثلاً آزمون فصل اول ریاضی"></div><div class="row-fields"><div class="field"><label>درس</label><input id="examSubject" required placeholder="ریاضی"></div><div class="field"><label>تعداد سؤال</label><input id="examCount" type="number" min="1" max="120" value="20" required></div></div><div class="row-fields"><div class="field"><label>تاریخ آزمون</label><input id="examDate" type="date"></div><div class="field"><label>ضریب نمره منفی</label><input value="۳" disabled></div></div><div class="field"><label for="examExcludedQuestions">شماره سؤال‌های حذف‌شده (اختیاری)</label><input id="examExcludedQuestions" inputmode="numeric" placeholder="مثلاً ۳، ۸، ۱۵"><small class="muted">شماره‌ها را با ویرگول جدا کنید. سؤال حذف‌شده در صحیح، غلط و مخرج درصد محاسبه نمی‌شود.</small></div><div class="field"><label>کلید پاسخ (شماره گزینه ۱ تا ۴، با ویرگول جدا کنید)</label><textarea id="answerKey" required placeholder="۱,۲,۳,۴,۱,۲,۳,۴"></textarea></div><div class="field"><label>ورود گروهی کلید از Excel یا CSV</label><input id="answerKeyFile" type="file" accept=".xlsx,.xls,.csv"><small class="muted">فایل تک‌ستونه یا دو‌ستونه (شماره سؤال، گزینه صحیح)؛ گزینه‌ها فقط ۱ تا ۴.</small></div><div class="notice info">پاسخ سفید صفر محاسبه می‌شود. هر پاسخ غلط یک‌سوم نمره صحیح را کسر می‌کند. پاسخ چندعلامتی باید بازبینی شود.</div><button class="btn btn-primary" type="submit">ذخیره آزمون و کلید پاسخ</button></form>
+     <form id="examForm"><div class="field"><label>عنوان آزمون</label><input id="examTitle" required placeholder="مثلاً آزمون فصل اول ریاضی"></div><div class="row-fields"><div class="field"><label>درس</label><input id="examSubject" required placeholder="ریاضی"></div><div class="field"><label>تعداد سؤال</label><input id="examCount" type="number" min="1" max="120" value="20" required></div></div><div class="field"><label>تفکیک درس‌ها و بازه سؤال‌ها</label><small class="muted">شماره سؤال‌های پاسخ‌برگ پیوسته و بدون تغییر می‌مانند. بازه‌ها باید از سؤال ۱ شروع شده و تا سؤال آخر ادامه داشته باشند.</small><div id="examSectionsEditor" class="exam-section-editor"></div><button class="btn btn-outline" id="addExamSection" type="button">＋ افزودن درس به آزمون</button></div><div class="row-fields"><div class="field"><label>تاریخ آزمون</label><input id="examDate" type="date"></div><div class="field"><label>ضریب نمره منفی</label><input value="۳" disabled></div></div><div class="field"><label for="examExcludedQuestions">شماره سؤال‌های حذف‌شده (اختیاری)</label><input id="examExcludedQuestions" inputmode="numeric" placeholder="مثلاً ۳، ۸، ۱۵"><small class="muted">شماره‌ها را با ویرگول جدا کنید. سؤال حذف‌شده در صحیح، غلط و مخرج درصد محاسبه نمی‌شود.</small></div><div class="field"><label>کلید پاسخ (شماره گزینه ۱ تا ۴، با ویرگول جدا کنید)</label><textarea id="answerKey" required placeholder="۱,۲,۳,۴,۱,۲,۳,۴"></textarea></div><div class="field"><label>ورود گروهی کلید از Excel یا CSV</label><input id="answerKeyFile" type="file" accept=".xlsx,.xls,.csv"><small class="muted">فایل تک‌ستونه یا دو‌ستونه (شماره سؤال، گزینه صحیح)؛ گزینه‌ها فقط ۱ تا ۴.</small></div><div class="notice info">پاسخ سفید صفر محاسبه می‌شود. هر پاسخ غلط یک‌سوم نمره صحیح را کسر می‌کند. پاسخ چندعلامتی باید بازبینی شود.</div><button class="btn btn-primary" type="submit">ذخیره آزمون و کلید پاسخ</button></form>
     </div>
     <div class="card panel"><h2>آزمون‌های ثبت‌شده</h2><p>فهرست آزمون‌ها و تعداد سؤال‌ها</p><div id="examList" class="small muted">در حال بارگذاری…</div></div>
    </div>
@@ -235,7 +252,7 @@ function getReportPercentage(report){
  return calculateExamPercentage({correct:Number(report.correct_count||0),wrong:Number(report.wrong_count||0),totalQuestions:total,excludedQuestions:excluded,negativeCoefficient:Number(report.exams?.negative_coefficient||3)});
 }
 async function loadReports(){
- const {data,error}=await sb.from("submissions").select("*,students(first_name,last_name,student_code),exams(*,answer_keys(answers))").order("created_at",{ascending:false}).limit(1000);
+ const {data,error}=await sb.from("submissions").select("*,students(first_name,last_name,student_code),exams(*,answer_keys(answers),exam_sections(*,subjects(name),lessons(name)))").order("created_at",{ascending:false}).limit(1000);
  if(error){toast(error.message);return}
  reports=data||[];
  $("statGraded").textContent=faNum(reports.filter(r=>!r.review_required).length);
@@ -268,7 +285,78 @@ $("answerKeyFile").onchange=async e=>{
  }catch(err){toast("خواندن فایل کلید ناموفق بود: "+err.message);}
  e.target.value="";
 };
-$("examForm").onsubmit=async e=>{e.preventDefault();if(!profile)return;const count=Number($("examCount").value),answers=$("answerKey").value.split(/[ ,\s،]+/).filter(Boolean).map(Number);if(answers.length!==count||answers.some(x=>![1,2,3,4].includes(x))){toast("تعداد پاسخ‌های کلید باید دقیقاً برابر تعداد سؤال‌ها و هر پاسخ بین ۱ تا ۴ باشد.");return}const rawExcluded=$("examExcludedQuestions").value.split(/[ ,\s،]+/).filter(Boolean).map(Number);const excluded=[...new Set(rawExcluded)];if(rawExcluded.some(x=>!Number.isSafeInteger(x)||x<1||x>count)||excluded.length!==rawExcluded.length){toast("شماره سؤال حذف‌شده باید یکتا و بین ۱ تا تعداد کل سؤال‌ها باشد.");return}const {data:exam,error}=await sb.from("exams").insert({institution_id:profile.institution_id,title:$("examTitle").value.trim(),subject:$("examSubject").value.trim(),exam_date:$("examDate").value||null,question_count:count,negative_coefficient:3,excluded_questions:excluded}).select().single();if(error){toast(error.message);return}const {error:ke}=await sb.from("answer_keys").insert({exam_id:exam.id,answers});if(ke){toast(ke.message);return}e.target.reset();$("examCount").value=20;toast("آزمون و کلید پاسخ ذخیره شد.");await loadExams()};
+
+function addExamSectionRow(values={}){
+ const host=$("examSectionsEditor");if(!host)return;
+ const rows=[...host.querySelectorAll(".exam-section-row")];
+ const previous=rows.length?Number(rows[rows.length-1].querySelector('[data-section-end]').value||0):0;
+ const total=Number($("examCount").value||20);
+ const start=values.start??(previous+1);
+ const end=values.end??(rows.length?total:Math.min(total,15));
+ const row=document.createElement("div");row.className="exam-section-row";
+ row.innerHTML='<div class="field"><label>نام درس</label><input data-section-subject required value="'+esc(values.subject||"")+'" placeholder="مثلاً ریاضی"></div><div class="field"><label>مبحث / فصل (اختیاری)</label><input data-section-lesson value="'+esc(values.lesson||"")+'" placeholder="فصل اول"></div><div class="field"><label>از سؤال</label><input data-section-start type="number" min="1" value="'+start+'"></div><div class="field"><label>تا سؤال</label><input data-section-end type="number" min="1" value="'+end+'"></div><div class="field"><label>ضریب درس</label><input data-section-weight type="number" min=".001" step=".001" value="'+(values.weight??1)+'"></div><button type="button" class="remove-section" aria-label="حذف درس">×</button>';
+ row.querySelector(".remove-section").onclick=()=>{if(host.children.length===1){toast("حداقل یک درس باید باقی بماند.");return}row.remove();renumberExamSections()};
+ host.appendChild(row);renumberExamSections();
+}
+function renumberExamSections(){
+ const rows=[...$("examSectionsEditor").querySelectorAll(".exam-section-row")];
+ rows.forEach((row,i)=>{const start=row.querySelector("[data-section-start]");if(i===0&&!start.value)start.value=1;});
+}
+function readExamSections(total){
+ const rows=[...$("examSectionsEditor").querySelectorAll(".exam-section-row")];
+ if(!rows.length)throw new Error("حداقل یک درس برای آزمون تعریف کنید.");
+ const sections=rows.map((row,i)=>({
+  subject:row.querySelector("[data-section-subject]").value.trim(),
+  lesson:row.querySelector("[data-section-lesson]").value.trim(),
+  start:Number(row.querySelector("[data-section-start]").value),
+  end:Number(row.querySelector("[data-section-end]").value),
+  weight:Number(row.querySelector("[data-section-weight]").value),
+  sort_order:i
+ }));
+ let next=1;
+ for(const x of sections){
+  if(!x.subject||!Number.isInteger(x.start)||!Number.isInteger(x.end)||x.start!==next||x.end<x.start||x.end>total||!Number.isFinite(x.weight)||x.weight<=0)
+   throw new Error("بازه درس‌ها باید پیوسته، بدون هم‌پوشانی و از سؤال ۱ تا "+total+" باشد؛ ضریب نیز باید مثبت باشد.");
+  next=x.end+1;
+ }
+ if(next!==total+1)throw new Error("بازه درس‌ها تا سؤال "+total+" کامل نشده است.");
+ return sections;
+}
+async function saveExamSections(exam,sections){
+ const payload=[];
+ for(const section of sections){
+  let {data:subject,error}=await sb.from("subjects").select("id").eq("institution_id",profile.institution_id).ilike("name",section.subject).maybeSingle();
+  if(error)throw error;
+  if(!subject){const created=await sb.from("subjects").insert({institution_id:profile.institution_id,name:section.subject,sort_order:section.sort_order}).select("id").single();if(created.error)throw created.error;subject=created.data}
+  let lessonId=null;
+  if(section.lesson){
+   let found=await sb.from("lessons").select("id").eq("institution_id",profile.institution_id).eq("subject_id",subject.id).ilike("name",section.lesson).maybeSingle();
+   if(found.error)throw found.error;
+   if(!found.data){const created=await sb.from("lessons").insert({institution_id:profile.institution_id,subject_id:subject.id,name:section.lesson,sort_order:section.sort_order}).select("id").single();if(created.error)throw created.error;lessonId=created.data.id}
+   else lessonId=found.data.id;
+  }
+  payload.push({institution_id:profile.institution_id,exam_id:exam.id,subject_id:subject.id,lesson_id:lessonId,question_start:section.start,question_count:section.end-section.start+1,weight:section.weight,sort_order:section.sort_order});
+ }
+ const {error}=await sb.from("exam_sections").insert(payload);if(error)throw error;
+}
+$("addExamSection").onclick=()=>addExamSectionRow();
+$("examCount").addEventListener("change",()=>{const rows=[...$("examSectionsEditor").querySelectorAll(".exam-section-row")];if(rows.length===1){rows[0].querySelector("[data-section-end]").value=$("examCount").value}});
+addExamSectionRow({subject:"",start:1,end:20,weight:1});
+$("examForm").onsubmit=async e=>{
+ e.preventDefault();if(!profile)return;
+ const count=Number($("examCount").value),answers=$("answerKey").value.split(/[ ,\\s،]+/).filter(Boolean).map(Number);
+ if(answers.length!==count||answers.some(x=>![1,2,3,4].includes(x))){toast("تعداد پاسخ‌های کلید باید دقیقاً برابر تعداد سؤال‌ها و هر پاسخ بین ۱ تا ۴ باشد.");return}
+ const rawExcluded=$("examExcludedQuestions").value.split(/[ ,\\s،]+/).filter(Boolean).map(Number),excluded=[...new Set(rawExcluded)];
+ if(rawExcluded.some(x=>!Number.isSafeInteger(x)||x<1||x>count)||excluded.length!==rawExcluded.length){toast("شماره سؤال حذف‌شده باید یکتا و بین ۱ تا تعداد کل سؤال‌ها باشد.");return}
+ let sections;try{sections=readExamSections(count)}catch(err){toast(err.message);return}
+ const {data:exam,error}=await sb.from("exams").insert({institution_id:profile.institution_id,title:$("examTitle").value.trim(),subject:$("examSubject").value.trim(),exam_date:$("examDate").value||null,question_count:count,negative_coefficient:3,excluded_questions:excluded}).select().single();
+ if(error){toast(error.message);return}
+ const {error:ke}=await sb.from("answer_keys").insert({exam_id:exam.id,answers});
+ if(ke){await sb.from("exams").delete().eq("id",exam.id);toast(ke.message);return}
+ try{await saveExamSections(exam,sections)}catch(err){await sb.from("exams").delete().eq("id",exam.id);toast("ذخیره تفکیک درس‌ها ناموفق بود: "+err.message);return}
+ e.target.reset();$("examCount").value=20;$("examSectionsEditor").innerHTML="";addExamSectionRow({start:1,end:20,weight:1});
+ toast("آزمون، کلید پاسخ و بازه درس‌ها ذخیره شد.");await loadExams()
+};
 $("classForm").onsubmit=async e=>{e.preventDefault();const {error}=await sb.from("classes").insert({institution_id:profile.institution_id,title:$("classTitle").value.trim(),grade:$("classGrade").value.trim()||null});if(error){toast(error.message);return}e.target.reset();toast("کلاس اضافه شد.");await loadClasses()};
 $("studentForm").onsubmit=async e=>{e.preventDefault();const class_id=$("studentClass").value;if(!class_id){toast("ابتدا کلاس را انتخاب کنید.");return}const {error}=await sb.from("students").insert({institution_id:profile.institution_id,class_id,student_code:$("studentCode").value.trim(),first_name:$("studentFirst").value.trim(),last_name:$("studentLast").value.trim()});if(error){toast(error.message);return}e.target.reset();toast("دانش‌آموز ثبت شد.");await loadStudents()};
 $("refreshStudents").onclick=loadStudents;
