@@ -451,8 +451,7 @@ def bubble_score(gray,cx,cy,half_w,half_h):
     crop=gray[y0:y1,x0:x1]
     if crop.size==0:
         return 0.0
-    yy,xx=np.ogrid[y0-y1+crop.shape[0]:y1-y1+crop.shape[0],x0-x1+crop.shape[1]:x1-x1+crop.shape[1]]
-    # Simpler coordinates tied to the actual crop origin.
+    # Coordinates are tied to the actual crop origin.
     yy,xx=np.ogrid[y0:y1,x0:x1]
     distance=np.sqrt((xx-float(cx))**2+(yy-float(cy))**2)
     inner=distance<=max(2.0,radius*.58)
