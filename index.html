@@ -538,7 +538,7 @@ function showAnswerDetails(id){
  });
  const render=filter=>{
   const list=details.filter(d=>filter==="all"||d.status===filter);
-  $("answerDetailRows").innerHTML=list.map(d=>'<tr><td>'+faNum(d.q)+'</td><td>'+(d.answer==null?"—":"گزینه "+faNum(d.answer))+'</td><td>گزینه '+faNum(d.correct)+'</td><td><span class="answer-state '+(d.status==="excluded"?"blank":d.status)+'">'+d.label+'</span>'+(d.reason?'<small class="muted">'+esc(d.reason)+'</small>':"")+'</td></tr>').join("")||'<tr><td colspan="4" class="empty">سؤالی در این گروه وجود ندارد.</td></tr>';
+  $("answerDetailRows").innerHTML=list.map(d=>'<tr><td>'+faNum(d.q)+'</td><td>'+(d.answer==null?"—":"گزینه "+faNum(d.answer))+'</td><td>گزینه '+faNum(d.correct)+'</td><td><span class="answer-state '+(d.status==="excluded"?"blank":d.status)+'">'+d.label+'</span>'+(d.reason?'<small class="muted">'+esc(d.reason)+(uncertainMap.get(d.q)?.scores?' · امتیاز گزینه‌ها: '+uncertainMap.get(d.q).scores.map(v=>faNum(Number(v).toFixed(2))).join(' / '):"")+'</small>':"")+'</td></tr>').join("")||'<tr><td colspan="4" class="empty">سؤالی در این گروه وجود ندارد.</td></tr>';
   document.querySelectorAll("[data-answer-filter]").forEach(b=>b.classList.toggle("active",b.dataset.answerFilter===filter));
  };
  const metric=calculateSubmissionBreakdown({answers,key,states:r.question_states,exam:r.exams,sections});
