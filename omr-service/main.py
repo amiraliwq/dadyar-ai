@@ -435,17 +435,69 @@ def orient_and_align(img,detector):
     return None,None,"چهار علامت مرجع گوشه برگه پیدا نشد؛ احتمال برش صفحه، حاشیه کم اسکن یا کج‌بودن زیاد تصویر."
 
 def bubble_score(gray,cx,cy,half_w,half_h):
-    # Score the inner area of a circular OMR bubble, excluding its printed ring.
-    Hh,Ww=gray.shape
-    inner=np.zeros((Hh,Ww),np.uint8); outer=np.zeros((Hh,Ww),np.uint8)
-    radius=max(2,int(min(half_w,half_h)))
-    cv2.circle(inner,(int(cx),int(cy)),max(1,int(radius*.58)),255,-1)
-    cv2.circle(outer,(int(cx),int(cy)),max(2,int(radius*1.75)),255,-1)
-    outer[inner>0]=0
-    inside=gray[inner>0]; outside=gray[outer>0]
-    if inside.size==0 or outside.size==0:return 0.0
+    """
+    Return a local fill score (0..1) for one OMR bubble.
+
+    Use a small ROI instead of allocating full-page masks for every option.
+    The inner disk avoids the printed outline; the background annulus avoids
+    both the outline and neighboring bubbles, making the score less sensitive
+    to paper shade, illumination and camera shadows.
+    """
+    height,width=gray.shape
+    radius=max(4,int(round(min(half_w,half_h))))
+    outer_radius=max(radius+2,int(round(radius*1.9)))
+    x0=max(0,int(cx)-outer_radius); x1=min(width,int(cx)+outer_radius+1)
+    y0=max(0,int(cy)-outer_radius); y1=min(height,int(cy)+outer_radius+1)
+    crop=gray[y0:y1,x0:x1]
+    if crop.size==0:
+        return 0.0
+    yy,xx=np.ogrid[y0-y1+crop.shape[0]:y1-y1+crop.shape[0],x0-x1+crop.shape[1]:x1-x1+crop.shape[1]]
+    # Simpler coordinates tied to the actual crop origin.
+    yy,xx=np.ogrid[y0:y1,x0:x1]
+    distance=np.sqrt((xx-float(cx))**2+(yy-float(cy))**2)
+    inner=distance<=max(2.0,radius*.58)
+    background=(distance>=radius*1.45)&(distance<=outer_radius*.95)
+    inside=crop[inner]
+    outside=crop[background]
+    if inside.size<8 or outside.size<12:
+        return 0.0
     baseline=float(np.median(outside))
-    return float(np.mean(np.clip((baseline-inside)/max(35,baseline),0,1)))
+    # A relative contrast score tolerates gray paper and moderate shadows.
+    darkness=np.clip((baseline-inside)/max(40.0,baseline),0.0,1.0)
+    mean_darkness=float(np.mean(darkness))
+    dark_coverage=float(np.mean(inside < baseline-55.0))
+    return float(np.clip(.70*mean_darkness+.30*dark_coverage,0.0,1.0))
+
+
+def classify_bubble_scores(scores,question):
+    """Classify a four-option score vector and return a conservative review flag."""
+    values=np.asarray(scores,dtype=np.float32)
+    if values.shape!=(4,) or not np.all(np.isfinite(values)):
+        return None,{"question":int(question),"reason":"امتیاز گزینه‌ها معتبر نیست","scores":[]}
+    order=np.argsort(values)[::-1]
+    best=float(values[order[0]])
+    second=float(values[order[1]])
+    margin=best-second
+    # Threshold adapts slightly to the local score floor while retaining a
+    # conservative minimum, preventing faint erasures from becoming answers.
+    threshold=float(max(.22,min(.34,float(np.median(values))+.16)))
+    marked=[int(i) for i,value in enumerate(values) if float(value)>=threshold]
+    details={"question":int(question),"scores":[round(float(v),3) for v in values],
+             "best_score":round(best,3),"margin":round(margin,3),
+             "threshold":round(threshold,3)}
+    if len(marked)>1:
+        details["reason"]="بیش از یک گزینه علامت خورده"
+        details["marked_options"]=[i+1 for i in marked]
+        return None,details
+    if best<threshold:
+        if best<.16:
+            return None,None
+        details["reason"]="علامت کم‌رنگ یا نامطمئن"
+        return None,details
+    if margin<.08:
+        details["reason"]="اختلاف امتیاز گزینه‌ها کم است"
+        return None,details
+    return int(order[0])+1,None
 
 def scan_bubbles(aligned,n,columns=6):
     """Read four fixed 30-question blocks using the same RTL geometry as the PDF."""
@@ -471,17 +523,11 @@ def scan_bubbles(aligned,n,columns=6):
         for off in option_offsets:
             cx=int(round((qx-off)*sx))
             scores.append(bubble_score(gray,cx,cy,radius,radius))
-        order=np.argsort(scores)[::-1]
-        best=float(scores[order[0]]); second=float(scores[order[1]])
-        marked=[j for j,v in enumerate(scores) if v>=.24]
-        if len(marked)>1:
-            uncertain.append({"question":q,"reason":"بیش از یک گزینه علامت خورده","scores":[round(v,3) for v in scores]})
-        elif best<.19:
-            answers[q-1]=None
-        elif best-second<.07:
-            uncertain.append({"question":q,"reason":"علامت کم‌رنگ یا نامطمئن","scores":[round(v,3) for v in scores]})
+        answer,review=classify_bubble_scores(scores,q)
+        if review:
+            uncertain.append(review)
         else:
-            answers[q-1]=int(order[0])+1
+            answers[q-1]=answer
     return answers,uncertain,None
 
 @app.post("/v1/sheets/inspect")
